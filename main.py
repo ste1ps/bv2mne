@@ -17,7 +17,8 @@ from data import(read_serialize,
                  Master,
                  serialize,
                  create_trans)
-import surface
+
+
 
 # from connectivity import (linear_corr,
 #                           covGC_time)
@@ -48,15 +49,21 @@ def test(subject = 'subject_04'):
     fname_atlas = subjects_dir + 'label/MarsAtlas_BV_2015.xls'
     # File to align coordinate frames
     trans_fname = subjects_dir + '{0}/trans/test1-trans.fif'.format(subject)
-    # Referential file list (standard)    file_trans_ref = subjects_dir + 'referential/referential.txt'
+    # Referential file list (standard files to be added)
+    file_trans_ref = subjects_dir + 'referential/referential.txt'
     ref = subjects_dir + '{0}/referential/{0}-trans.trm'.format(subject)
 
     # Create file transformation from BrainVisa to FreeSurfer
     create_trans(subject, file_trans_ref, ref)
 
-    # Check transformation
+    fname_tex = mne_dir + '{0}/tex/{0}_Lwhite_parcels_marsAtlas.gii'.format(subject)
+    fname_atl = mne_dir + 'label/MarsAtlas_BV_2015.xls'
+    fname_col = mne_dir + 'label/MarsAtlas.ima'
+
     surface_master = surface.get_surface(fname_surf_L, subject, 'lh', trans_fname)
-    surface_master.show('test', (0.3, 0.5, 0.8))
+
+    surfaces = surface.get_surface(surface_master, fname_tex, subject, 'lh', fname_atl, fname_col)
+
 
     #compute preprocessing on functional data
     epochs_act, epochs_stim, raw= preprocessing(subject, pdf_name, config_name,
