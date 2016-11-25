@@ -9,6 +9,7 @@
 #                              get_epochs_dics,
 #                              area_activity,
 #                              z_score)
+
 import mne
 from mne.viz import circular_layout, plot_connectivity_circle
 import numpy as np
