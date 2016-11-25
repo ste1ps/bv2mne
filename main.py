@@ -17,6 +17,8 @@ from data import(read_serialize,
                  Master,
                  serialize,
                  create_trans)
+import surface
+
 # from connectivity import (linear_corr,
 #                           covGC_time)
 
@@ -25,35 +27,36 @@ def test(subject = 'subject_04'):
 
     figure = None
 
-    # project 's directo
+    # Project 's directory
     subjects_dir = '/hpc/comco/brovelli.a/db_mne/meg_te/'
-
-    # functional data
+    # Functional data
     pdf_name = subjects_dir + '{0}/functional/1/c,rfDC'.format(subject)
     config_name = subjects_dir + '{0}/functional/1/config'.format(subject)
     head_shape_name = subjects_dir + 'hs_file'.format(subject)
-
-    # anatomical data
+    # White matter meshes
     fname_surf_L = subjects_dir + '{0}/surf/{0}_Lwhite.gii'.format(subject)
     fname_surf_R = subjects_dir + '{0}/surf/{0}_Rwhite.gii'.format(subject)
-
+    # MarsAtlas surface parcellation from Brainvisa
     fname_tex_L = subjects_dir + '{0}/tex/{0}_Lwhite_parcels_marsAtlas.gii'.format(subject)
     fname_tex_R = subjects_dir + '{0}/tex/{0}_Rwhite_parcels_marsAtlas.gii'.format(subject)
+    # Color file from Brainvisa
     fname_color = subjects_dir + 'label/MarsAtlas.ima'
-
+    # MarsAtlas volume parcellation from Brainvisa
     fname_vol = subjects_dir + '{0}/vol/{0}_gyriVolume_deepStruct.nii.gz'.format(subject)
     name_lobe_vol = ['Subcortical']
-
+    # MarsAtlas labelling xls file
     fname_atlas = subjects_dir + 'label/MarsAtlas_BV_2015.xls'
-
-    # file to align coordinate frames
+    # File to align coordinate frames
     trans_fname = subjects_dir + '{0}/trans/test1-trans.fif'.format(subject)
-
-    file_trans_ref = subjects_dir + 'referential/referential.txt'
+    # Referential file list (standard)    file_trans_ref = subjects_dir + 'referential/referential.txt'
     ref = subjects_dir + '{0}/referential/{0}-trans.trm'.format(subject)
 
-    # create file transformation : BrainVisa to FreeSurfer'
+    # Create file transformation from BrainVisa to FreeSurfer
     create_trans(subject, file_trans_ref, ref)
+
+    # Check transformation
+    surface_master = surface.get_surface(fname_surf_L, subject, 'lh', trans_fname)
+    surface_master.show('test', (0.3, 0.5, 0.8))
 
     #compute preprocessing on functional data
     epochs_act, epochs_stim, raw= preprocessing(subject, pdf_name, config_name,

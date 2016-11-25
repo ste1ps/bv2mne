@@ -10,7 +10,7 @@ import numpy as np
 
 import mne
 from mne import Label
-from mne.surface import _complete_surface_info
+from mne.surface import complete_surface_info
 from mne.io.constants import FIFF
 from nibabel import gifti
 from nibabel.freesurfer.io import write_geometry
@@ -96,7 +96,7 @@ class Surface(object):
         if normals is None:
             _dict = dict(rr=self.pos, tris=self.triangles,
                          ntri=self.triangles_length, np=self.pos_length)
-            self.normals = _complete_surface_info(_dict)['nn']
+            self.normals = complete_surface_info(_dict)['nn']
         else:
             self.normals = normals
 
@@ -331,7 +331,7 @@ def get_surface(fname, subject='S4', hemi='lh', trans=None):
         coords, triangles = mne.read_surface(fname)
     except Exception:
         try:
-            giftiImage = gifti.giftiio.read(fname)
+            giftiImage = gifti.read(fname)
 
             coords = giftiImage.darrays[0].data
             triangles = giftiImage.darrays[1].data
