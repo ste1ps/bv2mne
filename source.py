@@ -6,7 +6,7 @@ import numpy as np
 import mne
 import warnings
 from mne.source_space import SourceSpaces
-from mne.surface import _complete_surface_info
+from mne.surface import complete_surface_info
 from mne import write_source_spaces
 from sklearn.cluster import MiniBatchKMeans
 from math import pi
