@@ -3,60 +3,54 @@
 # Author: Alexandre Fabre <alexandre.fabre22@gmail.com>
 #         Andrea Brovelli
 
-from brain import get_brain
-from preprocessing import preprocessing
-from source_analysis import (forward_model,
-                             get_epochs_dics,
-                             area_activity,
-                             z_score)
+# from brain import get_brain
+# from preprocessing import preprocessing
+# from source_analysis import (forward_model,
+#                              get_epochs_dics,
+#                              area_activity,
+#                              z_score)
 import mne
 from mne.viz import circular_layout, plot_connectivity_circle
-
 import numpy as np
-
 import matplotlib.pyplot as plt
-
 from data import(read_serialize,
                  Master,
                  serialize,
                  create_trans)
+# from connectivity import (linear_corr,
+#                           covGC_time)
 
-from connectivity import (linear_corr,
-                          covGC_time)
-
-
-
-def test(subject):
+def test(subject = 'subject_04'):
     """compute all"""
 
+    figure = None
 
-    figure=None
+    # project 's directo
+    subjects_dir = '/hpc/comco/brovelli.a/db_mne/meg_te/'
 
-    subjects_dir = '.'
-    
-    #functional data
-    pdf_name='{0}/functional/2/c,rfDC'.format(subject)
-    config_name='{0}/functional/2/config'.format(subject)
-    head_shape_name='hs_file'.format(subject)
+    # functional data
+    pdf_name = subjects_dir + '{0}/functional/1/c,rfDC'.format(subject)
+    config_name = subjects_dir + '{0}/functional/1/config'.format(subject)
+    head_shape_name = subjects_dir + 'hs_file'.format(subject)
 
-    #anatomic data
-    fname_surf_L= '{0}/surf/{0}_Lwhite.gii'.format(subject)
-    fname_surf_R= '{0}/surf/{0}_Rwhite.gii'.format(subject)
+    # anatomical data
+    fname_surf_L = subjects_dir + '{0}/surf/{0}_Lwhite.gii'.format(subject)
+    fname_surf_R = subjects_dir + '{0}/surf/{0}_Rwhite.gii'.format(subject)
 
-    fname_tex_L= '{0}/tex/{0}_Lwhite_parcels_marsAtlas.gii'.format(subject)
-    fname_tex_R= '{0}/tex/{0}_Rwhite_parcels_marsAtlas.gii'.format(subject)
-    fname_color= 'label/MarsAtlas.ima'
+    fname_tex_L = subjects_dir + '{0}/tex/{0}_Lwhite_parcels_marsAtlas.gii'.format(subject)
+    fname_tex_R = subjects_dir + '{0}/tex/{0}_Rwhite_parcels_marsAtlas.gii'.format(subject)
+    fname_color = subjects_dir + 'label/MarsAtlas.ima'
 
-    fname_vol= '{0}/vol/{0}_gyriVolume_deepStruct.nii.gz' .format(subject)
-    name_lobe_vol= ['Subcortical']
+    fname_vol = subjects_dir + '{0}/vol/{0}_gyriVolume_deepStruct.nii.gz'.format(subject)
+    name_lobe_vol = ['Subcortical']
 
-    fname_atlas= 'label/MarsAtlas_BV_2015.xls'
+    fname_atlas = subjects_dir + 'label/MarsAtlas_BV_2015.xls'
 
-    #file to align coordinate frames
-    trans_fname= '{0}/trans/test1-trans.fif'.format(subject)
+    # file to align coordinate frames
+    trans_fname = subjects_dir + '{0}/trans/test1-trans.fif'.format(subject)
 
-    file_trans_ref = 'referential/referential.txt'
-    ref = 'S4/referential/S4-trans.trm'
+    file_trans_ref = subjects_dir + 'referential/referential.txt'
+    ref = subjects_dir + '{0}/referential/{0}-trans.trm'.format(subject)
 
     # create file transformation : BrainVisa to FreeSurfer'
     create_trans(subject, file_trans_ref, ref)
@@ -193,4 +187,4 @@ def test(subject):
         plt.show()
 
 if __name__ == '__main__':
-    test('S4')
+    test()
