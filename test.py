@@ -1,4 +1,4 @@
-
+import changepath
 import mne
 import surface
 subject = 'subject_04'
@@ -7,11 +7,11 @@ data_dir = '/hpc/comco/brovelli.a/db_brainvisa/meg_te/subject_04/t1mri/default_a
 
 trans_fname = '/hpc/comco/brovelli.a/db_mne/meg_te/subject_04/referential/subject_04-trans.trm'
 # White matter
-# surface_master = surface.get_surface((data_dir + 'subject_04_Lwhite.gii') , subject, 'lh', trans_fname)
+surface_master = surface.get_surface((data_dir + 'subject_04_Lwhite.gii') , subject, 'lh', trans_fname)
 # Grey matter
-surface_master = surface.get_surface((data_dir + 'subject_04_Lhemi.gii'), subject, 'lh', trans_fname)
+# surface_master = surface.get_surface((data_dir + 'subject_04_Lhemi.gii'), subject, 'lh', trans_fname)
 # Plot surface after transformation
-# surface_master.show('test', (0.3, 0.5, 0.8))
+surface_master.show('test', (0.85, 0.85, 0.85))
 
 # Create parcellation from MarsAtlas
 mne_dir = '/hpc/comco/brovelli.a/db_mne/meg_te/'
@@ -20,11 +20,17 @@ fname_atl = mne_dir + 'label/MarsAtlas_BV_2015.xls'
 fname_col = mne_dir + 'label/MarsAtlas.ima'
 surfaces = surface.get_surface(surface_master, fname_tex, subject, 'lh', fname_atl, fname_col)
 
+
+
+
 # Create volumetric parcellation from MarsAtlas
 fname_mri = mne_dir + '{0}/tex/{0}_Lwhite_parcels_marsAtlas.gii'.format(subject)
 fname_vol = subjects_dir + '{0}/vol/{0}_gyriVolume_deepStruct.nii.gz'.format(subject)
 name_lobe_vol = ['Subcortical']
 volumes = get_volume(fname_mri, fname_atl, name_lobe_vol, subject)
+
+
+
 
 fname_atl = mne_dir + 'label/MarsAtlas_BV_2015.xls'
 fname_col = mne_dir + 'label/MarsAtlas.ima'

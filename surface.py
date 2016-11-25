@@ -370,7 +370,7 @@ def read_color_area(filename, index):
             color = list(map(eval, color_lines))
             try:
                 # set color value between 0 and 1
-                color_list = list(map(tuple, (np.dot(np.take(color, index, axis=0), 1 / 255))))
+                color_list = list(map(tuple, (np.dot(np.take(color, index, axis=0), 1.0 / 255.0))))
             except ValueError:
                 raise ('values don\'t match with lines')
 

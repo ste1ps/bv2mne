@@ -63,7 +63,7 @@ def test(subject = 'subject_04'):
 
     surface_master = surface.get_surface(fname_surf_L, subject, 'lh', trans_fname)
 
-    surfaces = surface.get_surface(surface_master, fname_tex, subject, 'lh', fname_atl, fname_col)
+
 
 
     #compute preprocessing on functional data

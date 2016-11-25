@@ -1,7 +1,7 @@
 ﻿#!/usr/bin/env python
 
 # Author: Alexandre Fabre <alexandre.fabre22@gmail.com>
-
+import changepath
 from surface import (get_surface,
                      get_surface_areas)
 from volume import get_volume
@@ -540,33 +540,39 @@ def brain_test(subject):
         and display sources of the Thalamus in the right hemisphere"""
 
     figure = None
+    # Project 's directory
+    subjects_dir = '/hpc/comco/brovelli.a/db_mne/meg_te/'
 
-    fname_surf_L = '{0}/surf/{0}_Lwhite.gii'.format(subject)
-    fname_tex_L = '{0}/tex/{0}_Lwhite_parcels_marsAtlas.gii'.format(subject)
+    fname_surf_L = subjects_dir + '{0}/surf/{0}_Lwhite.gii'.format(subject)
+    fname_tex_L = subjects_dir + '{0}/tex/{0}_Lwhite_parcels_marsAtlas.gii'.format(subject)
 
     # fname_surf_L = None
     # fname_tex_L = None
 
-    fname_surf_R = '{0}/surf/{0}_Rwhite.gii'.format(subject)
-    fname_tex_R = '{0}/tex/{0}_Rwhite_parcels_marsAtlas.gii'.format(subject)
+    fname_surf_R = subjects_dir + '{0}/surf/{0}_Rwhite.gii'.format(subject)
+    fname_tex_R = subjects_dir + '{0}/tex/{0}_Rwhite_parcels_marsAtlas.gii'.format(subject)
 
     # fname_surf_R = None
     # fname_tex_R = None
 
 
-    trans = '{0}/referential/{0}-trans.trm'.format(subject)
+    trans = subjects_dir + '{0}/referential/{0}-trans.trm'.format(subject)
 
-    fname_atlas = 'label/MarsAtlas_BV_2015.xls'
-    fname_color = 'label/MarsAtlas.ima'
+    fname_atlas = subjects_dir + 'label/MarsAtlas_BV_2015.txt'
+    fname_color = subjects_dir + 'label/MarsAtlas.ima'
 
-    fname_vol = '{0}/vol/{0}_gyriVolume_deepStruct.nii.gz'.format(subject)
+    fname_vol = subjects_dir + '{0}/vol/{0}_parcellation.nii.gz'.format(subject)
     name_lobe_vol = ['Subcortical']
 
 
     brain = get_brain(subject, fname_surf_L, fname_surf_R, fname_tex_L, fname_tex_R,
                       0, fname_vol, name_lobe_vol, trans, fname_atlas, fname_color)
 
+    brain.show()
+
     src = brain.get_sources(space=5, distance='euclidean')
+
+    brain.show_sources(src[0], show_brain=True)
 
     figure = brain.show_sources(src[0], hemi='lh', lobe=['Occipital'], figure=figure, opacity=1, show_brain=True)    
 
@@ -575,4 +581,4 @@ def brain_test(subject):
     figure = brain.show_sources(src[1], hemi='rh', name=['Thal'], figure=figure, opacity=0.1, show_brain=False)    
 
 if __name__ == '__main__':
-    brain_test('S4')
+    brain_test('subject_04')
