@@ -542,43 +542,46 @@ def brain_test(subject):
     figure = None
     # Project 's directory
     subjects_dir = '/hpc/comco/brovelli.a/db_mne/meg_te/'
-
+    # Surface files
     fname_surf_L = subjects_dir + '{0}/surf/{0}_Lwhite.gii'.format(subject)
-    fname_tex_L = subjects_dir + '{0}/tex/{0}_Lwhite_parcels_marsAtlas.gii'.format(subject)
-
-    # fname_surf_L = None
-    # fname_tex_L = None
-
     fname_surf_R = subjects_dir + '{0}/surf/{0}_Rwhite.gii'.format(subject)
+    # MarsAtlas texture files
+    fname_tex_L = subjects_dir + '{0}/tex/{0}_Lwhite_parcels_marsAtlas.gii'.format(subject)
     fname_tex_R = subjects_dir + '{0}/tex/{0}_Rwhite_parcels_marsAtlas.gii'.format(subject)
-
-    # fname_surf_R = None
-    # fname_tex_R = None
-
-
+    # Transformatio file from BV to MNE
     trans = subjects_dir + '{0}/referential/{0}-trans.trm'.format(subject)
-
+    # MarsAtas files
     fname_atlas = subjects_dir + 'label/MarsAtlas_BV_2015.txt'
     fname_color = subjects_dir + 'label/MarsAtlas.ima'
-
+    # MarsAtlas volumetric parcellation file
     fname_vol = subjects_dir + '{0}/vol/{0}_parcellation.nii.gz'.format(subject)
     name_lobe_vol = ['Subcortical']
 
-
+    # Create brian object
     brain = get_brain(subject, fname_surf_L, fname_surf_R, fname_tex_L, fname_tex_R,
                       0, fname_vol, name_lobe_vol, trans, fname_atlas, fname_color)
 
-    brain.show()
-
+    # To show MarsAtlas parcels
+    # brain.show()
+    # To show the left frontal areas (problem in insula)
+    # brain.show(hemi='lh', lobe=['Frontal'])
+    # brain.show(hemi='lh', lobe=['Frontal'], name=['Insula'])
+    # Create source space on surface and volume
     src = brain.get_sources(space=5, distance='euclidean')
 
-    brain.show_sources(src[0], show_brain=True)
-
-    figure = brain.show_sources(src[0], hemi='lh', lobe=['Occipital'], figure=figure, opacity=1, show_brain=True)    
+    # Display sources in frontal lobe
+    # brain.show_sources(src[0], hemi='lh', lobe=['Frontal'], sphere_color=(0.7, 0.7, 0.7))
+    # Display sources in occipital lobe
+    # brain.show_sources(src[0], hemi='lh', lobe=['Occipital'])
+    # The show_brain option = True does not work because it calls a FS mesh which is not correctly oriented
+    # figure = brain.show_sources(src[0], hemi='lh', lobe=['Occipital'], figure=figure, opacity=1, show_brain=False)
+    # Display sources in the motoro cortex
+    # brain.show_sources(src[0], hemi='lh', lobe=['Frontal'], name=['Mdl'], opacity=1)
 
     brain.set_index()
 
-    figure = brain.show_sources(src[1], hemi='rh', name=['Thal'], figure=figure, opacity=0.1, show_brain=False)    
+    # Does no work for hemi='all'
+    brain.show_sources(src[1], hemi='all', lobe=['Subcortical'], name=['Thal'], opacity=0.1)
 
 if __name__ == '__main__':
     brain_test('subject_04')

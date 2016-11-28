@@ -216,8 +216,9 @@ class Surface(object):
 
         if show_brain:
             if brain is None:
-                brain = Brain(self.label.subject, self.label.hemi, fileformat, subjects_dir='.',
-                              figure=figure, background='white', curv=False, show_toolbar=True)
+                # NB: there is an error in sucjects_dir setting
+                brain = Brain(self.label.subject, self.label.hemi, fileformat, subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/',
+                              figure=figure, background='gii', curv=False, show_toolbar=True)
             if color is None:
                 color = self.label.color
             if self.label is not None:
@@ -407,7 +408,7 @@ def get_surface_areas(surface, texture, subject='S4', hemi='lh',
     rr = surface.pos
     normals = surface.normals
 
-    # get texture with gifti format (BainVisa)
+    # Gt texture with gifti format (BainVisa)= labels of MarsAtlas
     if isinstance(texture, str):
         giftiImage = gifti.giftiio.read(texture)
         base_values = giftiImage.darrays[0].data
@@ -454,7 +455,8 @@ def get_surface_areas(surface, texture, subject='S4', hemi='lh',
 
         vertices_cour = vertices[cour: end]
 
-        # each point of parcel must be associated with a face (triangle) in its parcel
+        # Keep only those noedes and pos of parcel that is associated with a face (triangle) in its parcel.
+        # This remo
 
         # get triangles where points of the parcel are
         triangles_bool = []
