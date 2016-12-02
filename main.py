@@ -23,7 +23,33 @@ from data import (read_serialize,
 # from connectivity import (linear_corr,
 #                           covGC_time)
 
-def test(subject='subject_04', session='1'):
+def do_preprocessing(subject='subject_04', session='1'):
+    """
+
+    :param subject:
+    :param session:
+    :return:
+    """
+    #-------------------------------------------------------------------------------------------------------------------
+    # Project's directory
+    #-------------------------------------------------------------------------------------------------------------------
+    subjects_dir = '/hpc/comco/brovelli.a/db_mne/meg_te/'
+
+    #-------------------------------------------------------------------------------------------------------------------
+    # Functional data
+    #-------------------------------------------------------------------------------------------------------------------
+    fname_bti = subjects_dir + '{0}/raw/{1}/c,rfDC'.format(subject, session)
+    fname_config = subjects_dir + '{0}/raw/{1}/config'.format(subject, session)
+    fname_hs = subjects_dir + '{0}/raw/{1}/hs_file'.format(subject, session)
+
+    # -------------------------------------------------------------------------------------------------------------------
+    # Preprocessing
+    # -------------------------------------------------------------------------------------------------------------------
+    # Load raw MEG 4D BTI data and do basic preprocessing
+    epochs_s, epochs_a, epochs_r, raw = preprocessing(subject, session, fname_bti, fname_config, fname_hs)
+
+
+def create_source_model(subject='subject_04', session='1'):
     """
     Pipeline for importing ...
     :param subject:
@@ -32,13 +58,20 @@ def test(subject='subject_04', session='1'):
     """
 
     figure = None
-
-    # Project 's directory
+    #-------------------------------------------------------------------------------------------------------------------
+    # Project's directory
+    #-------------------------------------------------------------------------------------------------------------------
     subjects_dir = '/hpc/comco/brovelli.a/db_mne/meg_te/'
+
+    #-------------------------------------------------------------------------------------------------------------------
     # Functional data
-    pdf_name = subjects_dir + '{0}/raw/{1}/c,rfDC'.format(subject, session)
-    config_name = subjects_dir + '{0}/raw/{1}/config'.format(subject, session)
-    head_shape_name = subjects_dir + '{0}/raw/{1}/hs_file'.format(subject, session)
+    #-------------------------------------------------------------------------------------------------------------------
+    # Raw fif fname
+    fname_raw = subjects_dir + '{0}/raw/{1}/{0}_raw.fif'.format(subject, session)
+
+    #-------------------------------------------------------------------------------------------------------------------
+    # Anatomical data
+    #-------------------------------------------------------------------------------------------------------------------
     # White matter meshes
     fname_surf_L = subjects_dir + '{0}/surf/{0}_Lwhite.gii'.format(subject)
     fname_surf_R = subjects_dir + '{0}/surf/{0}_Rwhite.gii'.format(subject)
@@ -52,23 +85,74 @@ def test(subject='subject_04', session='1'):
     fname_vol = subjects_dir + '{0}/vol/{0}_parcellation.nii.gz'.format(subject)
     name_lobe_vol = ['Subcortical']
     # File to align coordinate frames meg2mri computed using mne analyze (interactive gui)
-    trans_fname = subjects_dir + '{0}/trans/{0}_meg2mri-trans.fif'.format(subject)
+    fname_trans = subjects_dir + '{0}/trans/{0}_meg2mri-trans.fif'.format(subject)
     # Referential file list (standard files to be added)
-    file_trans_ref = subjects_dir + 'referential/referential.txt'
-    ref = subjects_dir + '{0}/ref/{0}-trans.trm'.format(subject)
+    fname_trans_ref = subjects_dir + 'referential/referential.txt'
+    fname_trans_out = subjects_dir + '{0}/ref/{0}-trans.trm'.format(subject)
 
+    #-------------------------------------------------------------------------------------------------------------------
+    # Setting up the source space from BrainVISA results
+    #-------------------------------------------------------------------------------------------------------------------
+    # http://martinos.org/mne/stable/manual/cookbook.html#source-localization
     # Create .trm file transformation from BrainVisa to FreeSurfer needed for brain.py function
-    create_trans(subject, file_trans_ref, ref)
+    create_trans(subject, fname_trans_ref, fname_trans_out)
 
-    # Create the brain object with all structures (surface and volume) and MarsAtlas
+    # Create the brain object with all structures (surface and volume) and MarsAtlas from BrainVISA
     brain = get_brain(subject, fname_surf_L, fname_surf_R, fname_tex_L, fname_tex_R,
-                      0, fname_vol, name_lobe_vol, ref, fname_atlas, fname_color)
+                      0, fname_vol, name_lobe_vol, fname_trans_out, fname_atlas, fname_color)
 
-    # Place sources onto cortical surface and subcortical volumes
+    # Create source space and put dipoles on the white matter surface and on a grid in subcortical volumes
     src = brain.get_sources(space=5, distance='euclidean')
 
-    # Load raw MEG 4D BTI data and do basic preprocessing
-    epochs_s, epochs_a, epochs_r, raw = preprocessing(subject, session, pdf_name, config_name, head_shape_name)
+    #-------------------------------------------------------------------------------------------------------------------
+    # Computing the single-shell forward solution using the boundary-element model (BEM) meshes from Freesurfer
+    #-------------------------------------------------------------------------------------------------------------------
+    # Load *.fif raw data to collect information for forward model in raw.info
+    raw = mne.io.read_raw_fif(fname_raw)
+    # Forward model for cortical sources (fixed orientation)
+    fwd = forward_model(subject, raw, fname_trans, src[0], subjects_dir, force_fixed=True, name='singleshell-cortex')
+    # Forward model for subcortical sources (no fixed orientation)
+    fwd = forward_model(subject, raw, fname_trans, src[1], subjects_dir, force_fixed=False, name='singleshell-subcort')
+
+
+    # Visualize BEM surfaces
+    mne.viz.plot_bem(subject, subjects_dir, brain_surfaces='white', orientation='coronal')
+
+    # Visualize the coregistration
+    info = mne.io.read_info(fname_raw)
+    mne.viz.plot_trans(info, fname_trans, subject=subject, dig=True, meg_sensors=True, head='outer_skin', subjects_dir=subjects_dir)
+    mne.viz.plot_trans(info, fname_trans, subject=subject, dig=[], meg_sensors=[], head='outer_skin', brain='white', subjects_dir=subjects_dir)
+
+    # Visualize sources ontop
+    cx_lh = src[0][0]
+    cx_lh = mne.SourceSpaces(src[0][0])
+    mne.viz.plot_bem(subject=subject, subjects_dir=subjects_dir, brain_surfaces='white', slices=np.linspace(100,150,10), orientation='coronal')
+    mne.viz.plot_bem(subject=subject, subjects_dir=subjects_dir, brain_surfaces='white', slices=np.linspace(110,150,10), orientation='coronal')
+
+    # Cortical sources left hemi
+    cx_lh = src[0][0]
+    # Source coordinates, faces and normals
+    coords = np.array(cx_lh[0]['rr'])
+    x1, y1, z1 = coords.T
+    x, y, z = coords[cx_lh[0]['inuse'].astype(bool)].T
+    faces = cx_lh[0]['tris']
+    normals = cx_lh[0]['nn']
+    # Create mesh
+    mesh = mlab.pipeline.triangular_mesh_source(x1, y1, z1, faces)
+    mesh.data.point_data.normals = normals
+    # Plot
+    mlab.figure(1, bgcolor=(0, 0, 0))
+    mlab.pipeline.surface(mesh, color=3 * (0.7,))
+    mlab.points3d(x, y, z, color=(1, 1, 0), scale_factor=0.002)
+
+
+    # Subcortical sources left hemi
+    sub_lh = src[1][0]
+    # Source coordinates, faces and normals
+    coords = np.array(sub_lh[0]['rr'])
+    x, y, z = coords[sub_lh[0]['inuse'].astype(bool)].T
+    mlab.points3d(x, y, z, color=(1, 1, 0), scale_factor=0.001)
+
 
     # Initialise
     # bases = Master(areas=brain)
@@ -80,10 +164,6 @@ def test(subject='subject_04', session='1'):
     # epochs_act= mne.read_epochs('{0}//preprocessing/{0}-act-epo.fif'.format(subject))
     # raw= mne.io.read_raw_fif('{0}//preprocessing/{0}-raw.fif'.format(subject))
 
-    # Forward model for cortical sources
-    # fwd = forward_model(subject, raw, trans_fname, src[1], subjects_dir=subjects_dir, force_fixed=False, name='singleshell-cx')
-    # Forward model for subcortical sources
-    fwd = forward_model(subject, raw, trans_fname, src[0], subjects_dir, force_fixed=True, name='singleshell-sc')
 
     # fwd= mne.read_forward_solution('S4/fwd/S4-fwd-surf.fif', force_fixed=True)
 
@@ -187,4 +267,5 @@ def test(subject='subject_04', session='1'):
 
 
 if __name__ == '__main__':
-    test()
+    # do_preprocessing()
+    create_source_model()

@@ -451,6 +451,7 @@ class Brain(object):
 def get_brain(subject, fname_surf_L=None, fname_surf_R=None, fname_tex_L=None,
               fname_tex_R=None, bad_areas=None, fname_vol=None, name_lobe_vol='Subcortical',
               trans=False, fname_atlas=None, fname_color=None):
+    # type: (object, object, object, object, object, object, object, object, object, object, object) -> object
     """show structures
 
     Parameters

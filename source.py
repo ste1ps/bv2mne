@@ -134,6 +134,7 @@ def get_volume_sources(volume, space=5, remains=None):
 
     inuse = np.zeros(volume.pos_length)
     inuse[arg_min] = 1
+    inuse = inuse.astype(int) # Need to be int
 
     # must be converted to meters
     rr = volume.pos * 1e-3
@@ -221,6 +222,7 @@ def get_surface_sources(surface, space=5, distance='euclidean', remains=None):
 
         inuse = np.zeros(surface.pos_length)
         inuse[centroids_id] = 1
+        inuse = inuse.astype(int)   # Need to be int
 
     # must be converted to meters
     rr = surface.pos * 1e-3

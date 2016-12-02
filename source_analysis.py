@@ -24,7 +24,7 @@ from preprocessing import preprocessing
 from data import read_serialize
 
 
-def forward_model(subject, raw, trans_fname, src, subjects_dir, force_fixed=True, name='single-shell'):
+def forward_model(subject, raw, fname_trans, src, subjects_dir, force_fixed=True, name='single-shell'):
     """construct forward model
 
     Parameters
@@ -33,13 +33,13 @@ def forward_model(subject, raw, trans_fname, src, subjects_dir, force_fixed=True
         The name of subject
     raw : instance of rawBTI
         functionnal data
-    trans_fname : str
+    fname_trans : str
         The filename of transformation matrix
     src : instance of SourceSpaces | list
         Sources of each interest hemisphere
     subjects_dir : str
         The subjects directory
-    force_fiwed: Boolean
+    force_fixed: Boolean
         Force fixed source orientation mode
     name : str
         Use to save output
@@ -75,7 +75,7 @@ def forward_model(subject, raw, trans_fname, src, subjects_dir, force_fixed=True
             lh_src, rh_src = src
             src = lh_src + rh_src
 
-    fwd = make_forward_solution(raw.info, trans_fname, src, bem_sol, fname=fname_fwd, mindist=0.0, overwrite=True)
+    fwd = make_forward_solution(raw.info, fname_trans, src, bem_sol, fname_fwd, mindist=0.0, overwrite=True)
     if force_fixed:
         # avoid the code rewriting
         fwd = mne.read_forward_solution(fname_fwd, force_fixed=True)
