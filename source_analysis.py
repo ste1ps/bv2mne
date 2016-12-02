@@ -5,14 +5,14 @@
 import numpy as np
 
 import os
-
+import changepath
 import mne
 from mne.source_space import SourceSpaces
-# from mne.time_frequency.csd import csd_epochs
-from csd import csd_epochs
+from mne.time_frequency.csd import CrossSpectralDensity
+# from csd import csd_epochs
 from mne.source_estimate import SourceEstimate
-# from mne.beamformer import dics_source_power_bis
-from _dics import dics_source_power_bis
+from mne.beamformer import dics_source_power
+# from _dics import dics_source_power_bis
 from mne import make_forward_solution
 from mne.connectivity.spectral import (_epoch_spectral_connectivity,
                                        spectral_connectivity)
@@ -24,7 +24,7 @@ from preprocessing import preprocessing
 from data import read_serialize
 
 
-def forward_model(subject, raw, trans_fname, src, subjects_dir, force_fixed=True, name= 'surf'):
+def forward_model(subject, raw, trans_fname, src, subjects_dir, force_fixed=True, name='single-shell'):
     """construct forward model
 
     Parameters
@@ -51,17 +51,20 @@ def forward_model(subject, raw, trans_fname, src, subjects_dir, force_fixed=True
     -------
     Author : Alexandre Fabre
     """
-    
-    # files to save step
-    fname_bem_model = '{0}/bem/{0}-{1}-bem.fif'.format(subject, name)
-    fname_bem_sol = '{0}/bem/{0}-{1}-bem-sol.fif'.format(subject, name)
-    fname_fwd = '{0}/fwd/{0}-{1}-fwd.fif'.format(subject, name)
 
-    #make bem model
-    model = mne.make_bem_model(subject, subjects_dir='.')
+    # Project 's directory
+    subj_dir = '/hpc/comco/brovelli.a/db_mne/meg_te/'
+
+    # files to save step
+    fname_bem_model = subj_dir + '{0}/bem/{0}-{1}-bem.fif'.format(subject, name)
+    fname_bem_sol = subj_dir + '{0}/bem/{0}-{1}-bem-sol.fif'.format(subject, name)
+    fname_fwd = subj_dir + '{0}/fwd/{0}-{1}-fwd.fif'.format(subject, name)
+
+    # Make bem model: single-shell model for MEG only
+    model = mne.make_bem_model(subject, conductivity=[0.3], subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/')
     mne.write_bem_surfaces(fname_bem_model, model)
 
-    #make bem solution
+    # Make bem solution
     bem_sol = mne.make_bem_solution(model)
     mne.write_bem_solution(fname_bem_sol, bem_sol)
 
@@ -70,10 +73,9 @@ def forward_model(subject, raw, trans_fname, src, subjects_dir, force_fixed=True
     if len(src) == 2:
             # gather sources each the two hemispheres
             lh_src, rh_src = src
-            src= lh_src + rh_src
-    
-    fwd = make_forward_solution(raw.info, trans_fname, src, bem_sol, fname=fname_fwd,
-                                mindist=0.0, overwrite=True)
+            src = lh_src + rh_src
+
+    fwd = make_forward_solution(raw.info, trans_fname, src, bem_sol, fname=fname_fwd, mindist=0.0, overwrite=True)
     if force_fixed:
         # avoid the code rewriting
         fwd = mne.read_forward_solution(fname_fwd, force_fixed=True)

@@ -108,7 +108,9 @@ def create_trans(subject, fname, fname_out):
                 trans = np.dot(trans, trans_cour)
 
     if fname_out.endswith('fif'):
-        write_trans(fname_out, trans)
+        # Create Transform class
+        X = mne.Transform(1, 2, trans)
+        write_trans(fname_out, X)
 
     else:
         with open(fname_out, 'w') as matfile:

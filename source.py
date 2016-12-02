@@ -138,7 +138,11 @@ def get_volume_sources(volume, space=5, remains=None):
     # must be converted to meters
     rr = volume.pos * 1e-3
 
-    src = [{'rr': rr, 'coord_frame': np.array((FIFF.FIFFV_COORD_MRI,), np.int32), 'type': 'surf', 'id': 0,
+    if volume.hemi=='lh':
+        Id = 101
+    elif volume.hemi=='rh':
+        Id = 102
+    src = [{'rr': rr, 'coord_frame': np.array((FIFF.FIFFV_COORD_MRI,), np.int32), 'type': 'surf', 'id': Id,
             'np': volume.pos_length, 'nn': volume.normals, 'inuse': inuse, 'nuse': remains, 'dist': None,
             'nearest': None, 'use_tris': None, 'nuse_tris': 0, 'vertno': arg_min, 'patch_inds': None,
             'tris': None, 'dist_limit': None, 'pinfo': None, 'ntri': 0, 'nearest_dist': None, 'removes': removes}]
@@ -221,7 +225,11 @@ def get_surface_sources(surface, space=5, distance='euclidean', remains=None):
     # must be converted to meters
     rr = surface.pos * 1e-3
 
-    src = [{'rr': rr, 'coord_frame': np.array((FIFF.FIFFV_COORD_MRI,), np.int32), 'type': 'surf', 'id': 0,
+    if surface.hemi=='lh':
+        Id = 101
+    elif surface.hemi=='rh':
+        Id = 102
+    src = [{'rr': rr, 'coord_frame': np.array((FIFF.FIFFV_COORD_MRI,), np.int32), 'type': 'surf', 'id': Id,
             'np': surface.pos_length, 'nn': surface.normals, 'inuse': inuse, 'nuse': remains, 'dist': None,
             'ntri': surface.triangles_length, 'nearest': None, 'use_tris': None, 'nuse_tris': 0,
             'vertno': centroids_id, 'patch_inds': None, 'tris': surface.triangles, 'dist_limit': None, 'pinfo': None,

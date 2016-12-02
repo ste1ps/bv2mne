@@ -3,96 +3,82 @@
 # Author: Alexandre Fabre <alexandre.fabre22@gmail.com>
 
 import mne
-
 import numpy as np
 
 from scipy.stats.mstats import zscore
 
-    
 
-def preprocessing(subject, pdf_name, config_name, head_shape_name,
-                  data_event= 'RESPONSE', noise_event='TRIGGER',
-                  data_id= None, noise_id= None):
+def preprocessing(subject, session, pdf_name, config_name, head_shape_name,
+                  response_chan_name='RESPONSE', trigger_chan_name='TRIGGER',
+                  data_id=None, noise_id=None):
 
-    raw= mne.io.read_raw_bti(pdf_name,config_name, head_shape_name,
-                             rename_channels=False, sort_by_ch_name=True,
-                             preload=True)
+    # Project 's directory
+    subjects_dir = '/hpc/comco/brovelli.a/db_mne/meg_te/'
 
-
+    # Load raw data
+    raw = mne.io.read_raw_bti(pdf_name, config_name, head_shape_name,
+                              rename_channels=False, sort_by_ch_name=True,
+                              preload=True)
     # Mark bad channels
     raw.info['bads'] = ['A151', 'A125']
 
-    # Keep only MEG data
-    meg = raw.pick_types(meg=True, copy=True)
+    # Save raw data
+    raw.save(subjects_dir + '{0}/raw/{1}/{0}_raw.fif'.format(subject, session), overwrite=True)
 
-    # Triggers
-    events = mne.find_events(raw, stim_channel= noise_event)
+    # Event data ("trigger" channels)
+    events = mne.find_events(raw, stim_channel=trigger_chan_name)
+
+    # Save event file for mne_analyze
+    mne.write_events(subjects_dir + '{0}/prep/{1}/{0}-eve.fif'.format(subject, session), events)
 
     # Responses
-    resps = mne.find_events(raw, stim_channel= data_event)
+    resps = mne.find_events(raw, stim_channel=response_chan_name)
 
-    # Define S-A codes
-    S_id = [522, 532, 542]
-    A_id = dict(A1=128, A2=256, A3=512, A4=1024, A5=2048)
+    # Define codes for Stim, Action and Reward
+    S_id = [522, 532, 542] # Stim 1, 2, 3 + 512 of photodyode code
+    A_id = [128, 256, 512, 1024, 2048] # Thumb, index, middle, ring, little fingers
+    R_id = [712, 722, 732] # R: Incorrect, Correct, Late + 512 of photodyode code
 
-    # get stimuli events
-    events = events[np.logical_or.reduce([events[:,-1] == _id for _id in S_id])]
+    # Get stimuli events
+    stims = events[np.logical_or.reduce([events[:,-1] == _id for _id in S_id])]
 
-    S_size = events.shape[0]
+    # Get response events
+    resps = resps[np.logical_or.reduce([resps[:,-1] == _id for _id in A_id])]
+
+    # Get reward events
+    rews = events[np.logical_or.reduce([events[:,-1] == _id for _id in R_id])]
+
+    # Check size
+    S_size = stims.shape[0]
     A_size = resps.shape[0]
-
     if A_size > S_size:
         raise ValueError('there are  more action than stimuli events')
 
-    i=0
-    while i < S_size and i < A_size:
-        if i < S_size-1:
-            # print(resps[i,0] - events[i,0])
-            if resps[i,0] > events[i+1,0]:
-                events = np.delete(events, i, axis=0)
-                S_size -= 1
-#  to exlude response greater that trigger more than 1000 ms after stimulus              
-#            elif resps[i,0] - events[i,0] > 1000:
-#                events = np.delete(events, i, axis=0)
-#                resps = np.delete(resps, i, axis=0)
-#                A_size -= 1
-#                S_size -= 1
-            else:
-                i +=1
-        else:
-            i += 1
-            
-    if S_size != A_size:
-        events = events[:A_size]
-    
-
-    # MEG and SEEG signals were first down-sampled to 1 kHz,
-    # low-pass filtered to 250 Hz
-    raw._data = mne.filter.low_pass_filter(raw._data, Fs=1000, Fp=250,
-                                           picks=None, method = 'fft')
+    # Take only correct and incorrect trials (remove late trials)
+    c = rews[:,2]<732
+    stims = stims[c]
+    resps = resps[c]
+    rews = rews[c]
 
     # MEG data
-    meg = raw.pick_types(meg=True, copy=True)
+    meg = raw.pick_types(meg=True)
 
-    # epochs aligned on finger movement (i.e., button press),
-    # also performed on stimulus onset
+    # Create epochs on stimulus onset
+    epochs_s = mne.Epochs(meg, stims, tmin=-0.7, tmax=0.2)
 
-    # create epochs
-    epochs_stim = mne.Epochs(meg, events, event_id=S_id, tmin=-0.7,
-                             tmax=0.2, baseline=(-0.7, 0.2),
-                             preload=True)
-    
-    epochs_act = mne.Epochs(meg, resps, event_id=A_id, tmin=-1.7,
-                            tmax=1.7, baseline=(None, None),
-                            preload=True)
+    # Create epochs on motor response
+    epochs_a = mne.Epochs(meg, resps, tmin=-1.7, tmax=1.7)
+
+    # Create epochs on reward onset
+    epochs_r = mne.Epochs(meg, rews, tmin=-1.7, tmax=1.7)
 
     # n_epochs * n_channels * datas
-    epoch_datas =epochs_act.get_data()
+    epoch_datas = epochs_a.get_data()
 
 
 #    _zscore = zscore(epoch_datas)
 #    _zscore_abs = np.abs(_zscore)
-    
+
 #    # channels covariances
 #    cov = mne.compute_covariance(epochs_act, method='empirical')
 
@@ -109,11 +95,11 @@ def preprocessing(subject, pdf_name, config_name, head_shape_name,
 #    np.delete(cov.data, bads, axis=1)
 
     # save
-    epochs_stim.save('{0}//preprocessing/{0}-stim-epo.fif'.format(subject))
-    epochs_act.save('{0}//preprocessing/{0}-act-epo.fif'.format(subject))
-    raw.save('{0}//preprocessing/{0}-raw.fif'.format(subject), overwrite=True)
+    epochs_s.save(subjects_dir+'{0}/prep/{1}/{0}_stim-epo.fif'.format(subject, session))
+    epochs_a.save(subjects_dir+'{0}/prep/{1}/{0}_resp-epo.fif'.format(subject, session))
+    epochs_r.save(subjects_dir+'{0}/prep/{1}/{0}_rew-epo.fif'.format(subject, session))
 
-    return epochs_act, epochs_stim, raw
+    return epochs_s, epochs_a, epochs_r, raw
 
 if __name__=="__main__":
     pass

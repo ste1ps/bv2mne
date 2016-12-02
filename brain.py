@@ -1,6 +1,7 @@
 ﻿#!/usr/bin/env python
 
 # Author: Alexandre Fabre <alexandre.fabre22@gmail.com>
+
 import changepath
 from surface import (get_surface,
                      get_surface_areas)
@@ -508,7 +509,7 @@ def get_brain(subject, fname_surf_L=None, fname_surf_R=None, fname_tex_L=None,
             areas_hemi = get_surface_areas(surface, texture=fname_tex[i], hemi=hemi,
                                            subject=subject, fname_atlas=fname_atlas,
                                            fname_color=fname_color)
-            #delete wrong areas
+            # Delete wrong areas
             if bad_areas is not None:
                 areas_hemi = np.delete(areas_hemi, bad_areas, axis=0)
 
@@ -549,7 +550,7 @@ def brain_test(subject):
     fname_tex_L = subjects_dir + '{0}/tex/{0}_Lwhite_parcels_marsAtlas.gii'.format(subject)
     fname_tex_R = subjects_dir + '{0}/tex/{0}_Rwhite_parcels_marsAtlas.gii'.format(subject)
     # Transformatio file from BV to MNE
-    trans = subjects_dir + '{0}/referential/{0}-trans.trm'.format(subject)
+    trans = subjects_dir + '{0}/ref/{0}-trans.trm'.format(subject)
     # MarsAtas files
     fname_atlas = subjects_dir + 'label/MarsAtlas_BV_2015.txt'
     fname_color = subjects_dir + 'label/MarsAtlas.ima'
