@@ -137,6 +137,7 @@ def get_volume_sources(volume, space=5, remains=None):
     inuse = inuse.astype(int) # Need to be int
 
     # must be converted to meters
+    # Pos is in voxels coords not mm
     rr = volume.pos * 1e-3
 
     if volume.hemi=='lh':
@@ -224,13 +225,15 @@ def get_surface_sources(surface, space=5, distance='euclidean', remains=None):
         inuse[centroids_id] = 1
         inuse = inuse.astype(int)   # Need to be int
 
-    # must be converted to meters
+    # must be converted to meters and transorm to numpy array
     rr = surface.pos * 1e-3
 
+    # Change index for hemi
     if surface.hemi=='lh':
         Id = 101
     elif surface.hemi=='rh':
         Id = 102
+
     src = [{'rr': rr, 'coord_frame': np.array((FIFF.FIFFV_COORD_MRI,), np.int32), 'type': 'surf', 'id': Id,
             'np': surface.pos_length, 'nn': surface.normals, 'inuse': inuse, 'nuse': remains, 'dist': None,
             'ntri': surface.triangles_length, 'nearest': None, 'use_tris': None, 'nuse_tris': 0,
@@ -356,6 +359,8 @@ def sources_pack(src, pos=None, normals=None, triangles=None, unit='mm'):
     inuse = np.zeros(surf_length)
     ind = np.array(ind).tolist()
     inuse[ind] = 1
+    # Need to become an array not a list
+    rr = np.array(rr)
 
     src_dict.update(dict(rr=rr, inuse=inuse, np=surf_length,
                          nuse=remains, nn=normals,

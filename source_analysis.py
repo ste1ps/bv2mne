@@ -19,8 +19,6 @@ from mne.connectivity.spectral import (_epoch_spectral_connectivity,
 
 from data import create_param_dict
 
-from preprocessing import preprocessing
-
 from data import read_serialize
 
 
@@ -60,11 +58,11 @@ def forward_model(subject, raw, fname_trans, src, subjects_dir, force_fixed=True
     fname_bem_sol = subj_dir + '{0}/bem/{0}-{1}-bem-sol.fif'.format(subject, name)
     fname_fwd = subj_dir + '{0}/fwd/{0}-{1}-fwd.fif'.format(subject, name)
 
-    # Make bem model: single-shell model for MEG only
+    # Make bem model: single-shell model. Depends on anatomy only.
     model = mne.make_bem_model(subject, conductivity=[0.3], subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/')
     mne.write_bem_surfaces(fname_bem_model, model)
 
-    # Make bem solution
+    # Make bem solution. Depends on anatomy only.
     bem_sol = mne.make_bem_solution(model)
     mne.write_bem_solution(fname_bem_sol, bem_sol)
 
@@ -75,6 +73,7 @@ def forward_model(subject, raw, fname_trans, src, subjects_dir, force_fixed=True
             lh_src, rh_src = src
             src = lh_src + rh_src
 
+    # Compute forward operator, commonly referred to as the gain or leadfield matrix.
     fwd = make_forward_solution(raw.info, fname_trans, src, bem_sol, fname_fwd, mindist=0.0, overwrite=True)
     if force_fixed:
         # avoid the code rewriting

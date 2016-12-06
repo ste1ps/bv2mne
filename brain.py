@@ -583,7 +583,7 @@ def brain_test(subject):
     brain.set_index()
 
     # Does no work for hemi='all'
-    brain.show_sources(src[1], hemi='all', lobe=['Subcortical'], name=['Thal'], opacity=0.1)
+    brain.show_sources(src[1], hemi='lh', lobe=['Subcortical'], name=['Thal'], opacity=0.1)
 
 if __name__ == '__main__':
     brain_test('subject_04')

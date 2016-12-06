@@ -23,7 +23,7 @@ class Volume(object):
         Parameters
         ----------
         pos : array(2)
-            Positions in volume
+            Positions in volume in mm
         hemi : array(3)
             voxel matrix
         label : list of str
@@ -229,7 +229,7 @@ def get_volume(mri, fname_atlas, lobe_name, subject , hemi='lh', reduce_volume=T
     n_sag, n_axi, n_cor = voxels.shape
 
     # hack to get a correct translation
-    affine[:3, -1] = [n_sag // 2, -n_axi // 2, n_cor // 2]
+    # affine[:3, -1] = [n_sag // 2, -n_axi // 2, n_cor // 2]
 
     volumes = []
     
