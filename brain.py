@@ -510,7 +510,8 @@ def get_brain(subject, fname_surf_L=None, fname_surf_R=None, fname_tex_L=None,
             areas_hemi = get_surface_areas(surface, texture=fname_tex[i], hemi=hemi,
                                            subject=subject, fname_atlas=fname_atlas,
                                            fname_color=fname_color)
-            # Delete wrong areas
+            # Delete WM (values of texture 0 and 255)
+            bad_areas = [0, 42]
             if bad_areas is not None:
                 areas_hemi = np.delete(areas_hemi, bad_areas, axis=0)
 

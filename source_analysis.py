@@ -8,11 +8,10 @@ import os
 import changepath
 import mne
 from mne.source_space import SourceSpaces
-from mne.time_frequency.csd import CrossSpectralDensity
-# from csd import csd_epochs
+from mne.time_frequency.csd import CrossSpectralDensity, csd_epochs
 from mne.source_estimate import SourceEstimate
 from mne.beamformer import dics_source_power
-# from _dics import dics_source_power_bis
+from mne.beamformer._dics import dics_source_power_bis
 from mne import make_forward_solution
 from mne.connectivity.spectral import (_epoch_spectral_connectivity,
                                        spectral_connectivity)
@@ -22,7 +21,7 @@ from data import create_param_dict
 from data import read_serialize
 
 
-def forward_model(subject, raw, fname_trans, src, subjects_dir, force_fixed=True, name='single-shell'):
+def forward_model(subject, raw, fname_trans, src, subjects_dir, force_fixed=False, surf_ori=False, name='single-shell'):
     """construct forward model
 
     Parameters
@@ -75,10 +74,18 @@ def forward_model(subject, raw, fname_trans, src, subjects_dir, force_fixed=True
 
     # Compute forward operator, commonly referred to as the gain or leadfield matrix.
     fwd = make_forward_solution(raw.info, fname_trans, src, bem_sol, fname_fwd, mindist=0.0, overwrite=True)
+
+    # Set orientation of the source
     if force_fixed:
-        # avoid the code rewriting
+        # Force fixed
         fwd = mne.read_forward_solution(fname_fwd, force_fixed=True)
-    
+    elif surf_ori:
+        # Surface normal
+        fwd = mne.read_forward_solution(fname_fwd, surf_ori=True)
+    else:
+        # Free like a bird
+        fwd = mne.read_forward_solution(fname_fwd)
+
     return fwd
 
 
@@ -162,8 +169,8 @@ def get_epochs_dics(epochs, fwd, tmin=None, tmax=None, tstep=None, win_lengths=N
 
     # Multiplying by 1e3 to avoid numerical issues
     n_time_steps = int(((tmax - tmin) * 1e3) // (tstep * 1e3))
-    
-    stc=[]
+
+    power = []
     for i_time in range(n_time_steps):
 
         win_tmin = tmin + i_time * tstep
@@ -173,7 +180,7 @@ def get_epochs_dics(epochs, fwd, tmin=None, tmax=None, tstep=None, win_lengths=N
         
         print('window : {0} to {1}'.format(win_tmin, win_tmax))
 
-        #compute csds
+        # Compute cross-spectral density csd matrix (nChans, nChans, nTapers, nTrials)
         csds = csd_epochs(epochs, mode=mode, fmin=fmin, fmax=fmax, tmin=win_tmin,
                           tmax=win_tmax, fsum=fsum, n_fft=n_fft,
                           mt_bandwidth=mt_bandwidth, mt_adaptive= mt_adaptive,
@@ -181,67 +188,111 @@ def get_epochs_dics(epochs, fwd, tmin=None, tmax=None, tstep=None, win_lengths=N
                           avg_tapers=avg_tapers, on_epochs=on_epochs)
 
         if len(csds[0].data.shape)>2:
-            # compute average csds to compute matrix filter of DICS
+            # Compute average csd to compute beamforming DICS filter
             avg_csds = csd_epochs(epochs, mode='multitaper', fmin=fmin, fmax=fmax, tmin=win_tmin,
                                   tmax=win_tmax, fsum=fsum, n_fft=n_fft, mt_bandwidth=mt_bandwidth,
                                   mt_adaptive= mt_adaptive,  mt_low_bias=mt_low_bias, projs=projs,
                                   verbose=verbose, avg_tapers=True, on_epochs=True)
-            
-        #compute DICS
-        cour_stc = dics_source_power_bis(epochs.info, fwd, csds, avg_csds).copy()
-        stc.append(cour_stc)
 
-    return stc
+        # Perform DICS
+        power_time, vertno = dics_source_power_bis(epochs.info, fwd, csds, avg_csds)
+
+        # Append time slices
+        power.append(power_time)
+
+    return power
 
 
-def z_score(data, noise):
-    """construct forward model
+
+def source2atlas(data, baseline, atlas):
+    '''
+    Transform source estimates to atalas-based
+    i) log transform
+    ii) takes zscore wrt baseline
+    iii) average across sources within the same area
+    '''
+
+    # Dimensions
+    n_time_points, n_src, n_trials = np.array(data).shape
+
+    # Take z-score of event related data with respect to baseline activity
+    z_value = z_score(data, baseline)
+
+    # Extract power time courses and sort them for each parcel (area in MarsAtlas)
+    power_sources = area_activity(z_value, atlas)
+
+    # Take average time course for each parcel across sources within an area (n_epochs, n_areas, n_times)
+    dims = np.array(power_sources).shape
+    power_atlas = np.zeros((n_trials, np.prod(dims), n_time_points))
+    narea = 0
+    for i in range(dims[0]):
+        for j in range(dims[1]):
+            power_singlearea = power_sources[i][j]
+            power_singlearea = np.mean(power_singlearea, axis=0)
+            power_atlas[:, narea, :] = power_singlearea
+            narea += 1
+
+    # Get names and lobes of areas
+    names = []
+    lobes = []
+    for hemi in ['lh', 'rh']:
+        for i in range(len(atlas[hemi])):
+            names.append(atlas['lh'][i].name + '_' + hemi)
+            lobes.append(atlas['lh'][i].lobe + '_' + hemi)
+
+    # Transform to list
+    names = np.array(names).T
+    names = names.tolist()
+    lobes = np.array(lobes).T
+    lobes = lobes.tolist()
+
+    return power_atlas, names, lobes
+
+
+
+def z_score(data, baseline):
+    """ z-score of source power wrt baseline period (noise)
 
     Parameters
     ----------
     data : instance of SourceEstimate | array
         The studied data
-    noise : instance of SourceEstimate | array
+    baseline : instance of SourceEstimate | array
         The baseline
 
     Returns
     -------
     z_value : array
-        The data z-value on baseline
+        The data transformed to z-value
 
     -------
-    Author : Alexandre Fabre
+    Author : Andrea Brovelli and Alexandre Fabre
     """
-    for stc in [data, noise]:
-        if isinstance(stc, SourceEstimate):
-            stc = np.array(list(map(lambda x : x.data, stc)))
-        else:
-            try:
-                stc = np.array(stc)
-            except TypeError:
-                print('stc must be SourceEstimate | list | array-like')
+    # Dimensions
+    n_time_points, n_src, n_trials = np.array(data).shape
 
-    # compute mean and std on baseline
-    mean = noise.mean(axis=0)
-    std = noise.std(axis=0)
-    
-    n_time_points, n_src, n_trials= data.shape
+    # Take log to make data approximately Gaussian
+    data_log = np.log(data)
+    baseline_log = np.log(baseline)
 
+    # Mean and std of baseline
+    mean = baseline_log.mean(axis=0)
+    std = baseline_log.std(axis=0)
+
+    # Take z-score wrt baseline
     z_value = np.zeros((n_src, n_trials, n_time_points))
-    
     for i in range(n_time_points):
-        cour_data = data[i]
-        
-        # compute z-score on data
-        value = (cour_data-mean)/std
+        # Compute z-score
+        value = (data_log[i] - mean) / std
+        # Store
         z_value[..., i] = value
 
     return z_value
 
-    
+
 
 def area_activity(data, obj):
-    """construct forward model
+    """ Mean activity for each atlas area
 
     Parameters
     ----------
@@ -254,7 +305,7 @@ def area_activity(data, obj):
     -------
     fwd : instance of Forward
     -------
-    Author : Alexandre Fabre
+    Author : Andrea Brovelli and Alexandre Fabre
     """
  
     obj_dict = create_param_dict(obj)
@@ -263,28 +314,32 @@ def area_activity(data, obj):
             obj[key] = list(map( lambda x : x.index_pack_src, obj_dict[key]))
         else:
             obj[key] = obj_dict[key]
-            
-    intervalle_min = 0
-    remains = 0
 
     # src number across each hemisphere
-    nb_src = [0,0]
-    for i, hemi in  enumerate(obj):
+    nb_src = [0, 0]
+    i = -1
+    for hemi in ['lh', 'rh']:
+        i += 1
         for v in obj[hemi]:
             if v.index_pack_src is not None:
                 nb_src[i] += len(v.index_pack_src)
 
+
+    # Organize in hemispheres
     regions = []
     start = 0
-    for i, hemi in enumerate(obj):
+    i = -1
+    for hemi in ['lh', 'rh']:
+        i += 1
         values = data[start:start+nb_src[i]]
         start += nb_src[i]
         regions.append([])
         for region in obj[hemi]:
             if region.index_pack_src is not None:
+                # Power values
                 select_sources = values[region.index_pack_src]
                 regions[i].append(select_sources)
-                
+
     return regions
 
 

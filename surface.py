@@ -455,7 +455,7 @@ def get_surface_areas(surface, texture, subject='S4', hemi='lh',
 
         vertices_cour = vertices[cour: end]
 
-        # Keep only those noedes and pos of parcel that is associated with a face (triangle) in its parcel.
+        # Keep only those nodes and pos of parcel that is associated with a face (triangle) in its parcel.
         # This remo
 
         # get triangles where points of the parcel are

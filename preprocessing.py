@@ -19,11 +19,17 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     # Mark bad channels
     raw.info['bads'] = ['A151', 'A125']
 
+    # Band pass filter
+    raw.filter(1, 250)
+
+    # Nothc filter
+    raw.notch_filter(np.arange(50, 151, 50))
+
     # Save raw data
     raw.save(subjects_dir + '{0}/raw/{1}/{0}_raw.fif'.format(subject, session), overwrite=True)
 
     # Remode power noise
-    raw.notch_filter(np.arange(50, 251, 50), phase='zero-double')
+    # raw.notch_filter(np.arange(50, 251, 50), phase='zero-double')
 
     # Event data ("trigger" channels)
     events = mne.find_events(raw, stim_channel=trigger_chan_name)
@@ -63,54 +69,65 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     # MEG data
     meg = raw.pick_types(meg=True)
 
-    # Create epochs on stimulus onset
-    epochs_s = mne.Epochs(meg, stims, tmin=-0.7, tmax=0.2)
+    # Create epochs for baseline
+    epochs_b = mne.Epochs(meg, stims, tmin=-1.5, tmax=0.5)
 
-    # Create epochs on motor response
-    epochs_a = mne.Epochs(meg, resps, tmin=-1.7, tmax=1.7)
+    # Create epochs on stimulus onset
+    epochs_s = mne.Epochs(meg, stims, tmin=-1.0, tmax=1.5)
+
+    # Create epochs on action
+    epochs_a = mne.Epochs(meg, resps, tmin=-2.0, tmax=2.0)
 
     # Create epochs on reward onset
-    epochs_r = mne.Epochs(meg, rews, tmin=-1.7, tmax=1.7)
+    epochs_r = mne.Epochs(meg, rews, tmin=-0.5, tmax=1.5)
+    #
+    # # Resample epochs
+    # epochs_b = epochs_b.resample(1000)
+    # epochs_s = epochs_s.resample(1000)
+    # epochs_a = epochs_a.resample(1000)
+    # epochs_r = epochs_r.resample(1000)
 
+    # # Filter in the high-gamma range
+    # hga = meg.filter(60, 120)
+    # hga_epochs_a = mne.Epochs(hga, resps, tmin=-1.5, tmax=1.5)
+    # # n_epochs * n_channels * datas
+    # epoch_datas = hga_epochs_a.get_data()
+    # # RMS
+    # rms = np.sqrt(np.mean(np.square(epoch_datas), axis=2))
+    # # USe interactive navigation to zoom in and out to select bad trials and channele
+    # fig = plt.figure()
+    # plt.imshow(rms, interpolation='none', aspect='auto')
+    # plt.colorbar()
+    # plt.xlabel('Channels')
+    # plt.ylabel('Trials')
+    # plt.title('RMS')
+    # plt.rc('grid', linestyle=".", linewidth=5, color='black')
+    # plt.grid(which='both')
 
-    # Filter in the high-gamma range
-    hga = meg.filter(60, 120)
-    hga_epochs_a = mne.Epochs(hga, resps, tmin=-1.7, tmax=1.7)
-    # n_epochs * n_channels * datas
-    epoch_datas = hga_epochs_a.get_data()
-    # RMS
-    rms = np.sqrt(np.mean(np.square(epoch_datas), axis=2))
-    plt.imshow(rms, interpolation='none', aspect='auto')
-    plt.colorbar()
-    plt.xlabel('Channels')
-    plt.ylabel('Trials')
-    plt.title('RMS')
+    # Channels covariances
+    # cov = mne.compute_covariance(epochs_a, method='empirical')
+    # var = np.diagonal(cov.data)
 
-    plt.imshow(np.average(_zscore_abs, axis=2))
-    plt.title('abs z-score')
+    # bads = np.where(var>1.5*10-24)[0]
 
-
-
-    # channels covariances
-    cov = mne.compute_covariance(epochs_a, method='empirical')
-
-
-    var = np.diagonal(cov.data)
-
-    bads = np.where(var>1.5*10-24)[0]
-    # channels were excluded from further analyses, epochs must be preload
-    epochs_act.drop_channels(ch_names=ch_names, copy=False)
-
-    # remove bas channels in covariance matrix
-    np.delete(cov.data, bads, axis=0)
-    np.delete(cov.data, bads, axis=1)
+    # Drop epochs with large RMS from Fieldtrip
+    bad_trials=np.array([5, 17, 20, 33, 59])-1
+    epochs_b.drop(indices=bad_trials)
+    epochs_s.drop(indices=bad_trials)
+    epochs_a.drop(indices=bad_trials)
+    # epochs_r.drop(indices=bad_trials)
+    # # Drop channels with large RMS
+    # bad_chans=[epochs_a.ch_names[28]]
+    # epochs_b.info['bads']=bad_chans
+    # epochs_s.info['bads']=bad_chans
+    # epochs_a.info['bads']=bad_chans
+    # epochs_r.info['bads']=bad_chans
 
     # save
-    epochs_s.save(subjects_dir+'{0}/prep/{1}/{0}_stim-epo.fif'.format(subject, session))
-    epochs_a.save(subjects_dir+'{0}/prep/{1}/{0}_resp-epo.fif'.format(subject, session))
-    epochs_r.save(subjects_dir+'{0}/prep/{1}/{0}_rew-epo.fif'.format(subject, session))
+    epochs_b.save(subjects_dir+'{0}/prep/{1}/{0}_baseline-epo.fif'.format(subject, session))
+    epochs_a.save(subjects_dir+'{0}/prep/{1}/{0}_action-epo.fif'.format(subject, session))
 
-    return epochs_s, epochs_a, epochs_r, raw
+    return
 
 if __name__=="__main__":
     pass
