@@ -185,7 +185,7 @@ def compute_singletrial_source_power(subjects_dir='/hpc/comco/brovelli.a/db_mne/
     fname_baseline = subjects_dir + '{0}/prep/{1}/{0}_baseline-epo.fif'.format(subject, session)
     epochs_baseline = mne.read_epochs(fname_baseline)
     # Output filename for source power analysis at the atals level
-    fname_power = subjects_dir + '{0}/hga/{1}/{0}_{2}_hga_-epo.fif'.format(subject, session, event)
+    fname_power = subjects_dir + '{0}/hga/{1}/{0}_{2}_hga-epo.fif'.format(subject, session, event)
 
     # -------------------------------------------------------------------------------------------------------------------
     # Computing the single-shell forward solution using raw data for each session
