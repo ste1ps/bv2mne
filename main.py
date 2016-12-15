@@ -228,7 +228,7 @@ def compute_singletrial_source_power(subjects_dir='/hpc/comco/brovelli.a/db_mne/
     info = mne.create_info(ch_names=area_names, ch_types='seeg', sfreq=sfreq)
 
     # Trials were cut from tmin
-    tmin = t_data[0] + cwin_lengths/2
+    tmin = t_data[0] + win_lengths/2
 
     # Single-trial power at area level
     power_atlas = mne.EpochsArray(power_atlas, info, epochs_event.events, tmin, epochs_event.event_id)
@@ -236,6 +236,18 @@ def compute_singletrial_source_power(subjects_dir='/hpc/comco/brovelli.a/db_mne/
     # Save data
     power_atlas.save(fname_power)
 
+    # Plotting image
+    pow.average().plot_image(picks=np.arange(0,41,1), units='z-score', scalings=1, titles='HGA - lh', cmap='interactive')
+    plt.yticks(np.linspace(0, 40, 41), pow.ch_names[0:41], rotation='horizontal', fontsize=8)
+    plt.grid()
+    pow.average().plot_image(picks=np.arange(41,82,1), units='z-score', scalings=1, titles='HGA - lr', cmap='interactive')
+    plt.yticks(np.linspace(0, 40, 41), pow.ch_names[41:82], rotation='horizontal', fontsize=8)
+    plt.grid()
+
+    # Single area Mdl
+    pow.plot_image(picks=22, units='z-score', scalings=1, titles='HGA - lr', cmap='interactive')
+    
+    power_atlas.average().plot_image(units='z-score', scaling=1, titles='HGA')
 
 def check_results():
     # !!!!!
