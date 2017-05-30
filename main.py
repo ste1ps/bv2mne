@@ -91,6 +91,9 @@ def create_source_model(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', sub
 
     # Create source space and put dipoles on the white matter surface and on a grid in subcortical volumes
     src = brain.get_sources(space=5, distance='euclidean')
+    #src = brain.get_sources(space=5, distance='dijkstran')
+
+    brain.show_sources(src[0], hemi='lh', lobe=['Frontal'], name=['Insula'], sphere_color=(0.7, 0.7, 0.7), opacity=1)
 
     # Save brian object to file
     serialize(brain, fname_brain)
@@ -402,5 +405,5 @@ def check_results():
 
 if __name__ == '__main__':
     # do_preprocessing()
-    # create_source_model()
-    compute_singletrial_source_power()
+    create_source_model()
+    # compute_singletrial_source_power()
