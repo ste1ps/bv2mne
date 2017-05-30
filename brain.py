@@ -2,7 +2,7 @@
 
 # Author: Alexandre Fabre <alexandre.fabre22@gmail.com>
 
-import changepath
+
 from surface import (get_surface,
                      get_surface_areas)
 from volume import get_volume
@@ -578,7 +578,7 @@ def brain_test(subject):
     # brain.show_sources(src[0], hemi='lh', lobe=['Occipital'])
     # The show_brain option = True does not work because it calls a FS mesh which is not correctly oriented
     # figure = brain.show_sources(src[0], hemi='lh', lobe=['Occipital'], figure=figure, opacity=1, show_brain=False)
-    # Display sources in the motoro cortex
+    # Display sources in the motor cortex
     # brain.show_sources(src[0], hemi='lh', lobe=['Frontal'], name=['Mdl'], opacity=1)
 
     brain.set_index()

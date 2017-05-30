@@ -537,7 +537,7 @@ def show_surface_sources(src, obj, index_pack_src=None, index=None, figure=None,
             p = np.take(src['vertno'], index_src, axis=0).tolist()
 
             # get source positions
-            pos_cour = np.take(src['rr'], p, axis=0) * 1000
+            pos_cour = np.take(src['rr'], p, axis=0) * 1e3
             
         else:
             index_src = False
