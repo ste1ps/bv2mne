@@ -5,6 +5,7 @@
 import mne
 import numpy as np
 import matplotlib.pyplot as plt
+from GUI_bad_selector import GUI_plot
 from scipy.stats.mstats import zscore
 
 
@@ -87,22 +88,24 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     # epochs_a = epochs_a.resample(1000)
     # epochs_r = epochs_r.resample(1000)
 
-    # # Filter in the high-gamma range
-    # hga = meg.filter(60, 120)
-    # hga_epochs_a = mne.Epochs(hga, resps, tmin=-1.5, tmax=1.5)
-    # # n_epochs * n_channels * datas
-    # epoch_datas = hga_epochs_a.get_data()
-    # # RMS
-    # rms = np.sqrt(np.mean(np.square(epoch_datas), axis=2))
-    # # USe interactive navigation to zoom in and out to select bad trials and channele
-    # fig = plt.figure()
-    # plt.imshow(rms, interpolation='none', aspect='auto')
-    # plt.colorbar()
-    # plt.xlabel('Channels')
-    # plt.ylabel('Trials')
-    # plt.title('RMS')
-    # plt.rc('grid', linestyle=".", linewidth=5, color='black')
-    # plt.grid(which='both')
+    # Filter in the high-gamma range
+    hga = meg.filter(60, 120)
+    hga_epochs_a = mne.Epochs(hga, resps, tmin=-1.5, tmax=1.5)
+    # n_epochs * n_channels * datas
+    epoch_datas = hga_epochs_a.get_data()
+    # RMS
+    rms = np.sqrt(np.mean(np.square(epoch_datas), axis=2))
+    # USe interactive navigation to zoom in and out to select bad trials and channele
+    fig = plt.figure()
+    plt.imshow(rms, interpolation='none', aspect='auto')
+    plt.colorbar()
+    plt.xlabel('Channels')
+    plt.ylabel('Trials')
+    plt.title('RMS')
+    plt.rc('grid', linestyle="-", linewidth=5, color='black')
+    plt.grid(which='both')
+
+    artifact_rejection = GUI_plot(rms, subjects_dir, subject)
 
     # Channels covariances
     # cov = mne.compute_covariance(epochs_a, method='empirical')
@@ -111,17 +114,25 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     # bads = np.where(var>1.5*10-24)[0]
 
     # Drop epochs with large RMS from Fieldtrip
-    bad_trials=np.array([5, 17, 20, 33, 59])-1
-    epochs_b.drop(indices=bad_trials)
-    epochs_s.drop(indices=bad_trials)
-    epochs_a.drop(indices=bad_trials)
+    # bad_trials=np.array([5, 17, 20, 33, 59])-1
+    bad_trials = artifact_rejection[1]
+    if bad_trials is not None:
+        epochs_b.drop(indices=bad_trials)
+        epochs_s.drop(indices=bad_trials)
+        epochs_a.drop(indices=bad_trials)
     # epochs_r.drop(indices=bad_trials)
-    # # Drop channels with large RMS
+    # Drop channels with large RMS
     # bad_chans=[epochs_a.ch_names[28]]
-    # epochs_b.info['bads']=bad_chans
-    # epochs_s.info['bads']=bad_chans
-    # epochs_a.info['bads']=bad_chans
-    # epochs_r.info['bads']=bad_chans
+    # bad_chans = []
+    bad_channels = artifact_rejection[0]
+    if bad_channels is not None:
+        for ar in bad_channels:
+            bad_chans = [epochs_a.ch_names[ar]]
+            print type(bad_chans)
+            epochs_b.info['bads'] = bad_chans
+            epochs_s.info['bads'] = bad_chans
+            epochs_a.info['bads'] = bad_chans
+            # epochs_r.info['bads']=bad_chans
 
     # save
     epochs_b.save(subjects_dir+'{0}/prep/{1}/{0}_baseline-epo.fif'.format(subject, session))
