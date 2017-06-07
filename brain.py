@@ -126,7 +126,7 @@ class Brain(object):
         if index is None:
             # to select the other object
             index = struct[struct!=self.name_obj]
-        elif not index in values:
+        elif not index in struct:
             raise ValueError('index must be \'surface\' or \'volume\'')
         
         if index == 'surface' and self.surfaces is not None:
@@ -225,7 +225,7 @@ class Brain(object):
         if hemi is None or hemi == 'all':
             obj = self.obj.copy()
         elif hemi in keys:
-            obj = {hemi: self.obj[hemi].copy()}
+            obj = self.obj.copy()
         else:
             raise ValueError('hemi is invalid')
 

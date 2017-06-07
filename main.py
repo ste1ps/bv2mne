@@ -91,8 +91,14 @@ def create_source_model(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', sub
 
     # Create source space and put dipoles on the white matter surface and on a grid in subcortical volumes
     src = brain.get_sources(space=5, distance='euclidean')
-    #src = brain.get_sources(space=5, distance='dijkstran')
+    # src = brain.get_sources(space=5, distance='dijkstra')
 
+    brain.set_index('volume')
+
+    brain.show_sources(src[1], hemi='lh', lobe=['Subcortical'], name=['Thal'], sphere_color=(0.7, 0.7, 0.7))
+    brain.show_sources(src[1], hemi='lh', lobe=['Subcortical'], name=['Thal'], opacity=0.1)
+
+    brain.set_index(index='surface')
     brain.show_sources(src[0], hemi='lh', lobe=['Frontal'], name=['Insula'], sphere_color=(0.7, 0.7, 0.7), opacity=1)
 
     # Save brian object to file
