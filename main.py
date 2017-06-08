@@ -90,16 +90,8 @@ def create_source_model(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', sub
                       0, fname_vol, name_lobe_vol, fname_trans_out, fname_atlas, fname_color)
 
     # Create source space and put dipoles on the white matter surface and on a grid in subcortical volumes
-    src = brain.get_sources(space=5, distance='euclidean')
-    # src = brain.get_sources(space=5, distance='dijkstra')
-
-    brain.set_index('volume')
-
-    brain.show_sources(src[1], hemi='lh', lobe=['Subcortical'], name=['Thal'], sphere_color=(0.7, 0.7, 0.7))
-    brain.show_sources(src[1], hemi='lh', lobe=['Subcortical'], name=['Thal'], opacity=0.1)
-
-    brain.set_index(index='surface')
-    brain.show_sources(src[0], hemi='lh', lobe=['Frontal'], name=['Insula'], sphere_color=(0.7, 0.7, 0.7), opacity=1)
+    # src = brain.get_sources(space=5, distance='euclidean')
+    src = brain.get_sources(space=5, distance='dijkstra')
 
     # Save brian object to file
     serialize(brain, fname_brain)
@@ -196,26 +188,29 @@ def compute_singletrial_source_power(subjects_dir='/hpc/comco/brovelli.a/db_mne/
     # Output filename for source power analysis at the atals level
     fname_power = subjects_dir + '{0}/hga/{1}/{0}_{2}_hga-epo.fif'.format(subject, session, event)
 
-    # -------------------------------------------------------------------------------------------------------------------
-    # Computing the single-shell forward solution using raw data for each session
-    # -------------------------------------------------------------------------------------------------------------------
-    # Forward model for cortical sources (fix the source orientation normal to cortical surface)
-    fwd = forward_model(subject, epochs_event, fname_trans, src[0], subjects_dir, force_fixed=True, name='singleshell-cortex')
-    # Forward model for subcortical sources (no fixed orientation)
-    # fwd = forward_model(subject, raw, fname_trans, src[1], subjects_dir, force_fixed=False, name='singleshell-subcort')
-
+    #-------------------------------------------------------------------------------------------------------------------
+    # Functional parameters
+    #-------------------------------------------------------------------------------------------------------------------
     # High-gamma activity (HGA) parameters
     fmin = 88
     fmax = 92
     mt_bandwidth = 60
     # Time parameters
     win_lengths = 0.2
-    tstep = 0.005
+    tstep = 0.5
     # Sampling rate of power estimates
     sfreq = 1 / tstep
     # Initial time points of multitaper window
     t_data = [-1.0, 0.8]
     t_bline = [-0.6, -0.2]
+
+    # -------------------------------------------------------------------------------------------------------------------
+    # Computing the single-shell forward solution using raw data for each session
+    # -------------------------------------------------------------------------------------------------------------------
+    # Forward model for cortical sources (fix the source orientation normal to cortical surface)
+    # fwd = forward_model(subject, epochs_event, fname_trans, src[0], subjects_dir, force_fixed=True, name='singleshell-cortex')
+    # Forward model for subcortical sources (no fixed orientation)
+    fwd = forward_model(subject, epochs_event, fname_trans, src[1], subjects_dir, force_fixed=False, name='singleshell-subcort')
 
     # Event-related source time course stc of single-trial power estimates (all sources)
     power_event = get_epochs_dics(epochs_event, fwd, tmin=t_data[0], tmax=t_data[1], tstep=tstep,
@@ -231,7 +226,7 @@ def compute_singletrial_source_power(subjects_dir='/hpc/comco/brovelli.a/db_mne/
 
 
     # Single-trial power timecourse at atlas level (MarsAtlas)
-    power_atlas, area_names, area_lobes = source2atlas(power_event, power_baseline, brain.surfaces)
+    power_atlas, area_names, area_lobes = source2atlas(power_event, power_baseline, brain.volumes)
 
     # Create Epoch class to store power_atlas (can add montage later for MarsAtlas positions)
     info = mne.create_info(ch_names=area_names, ch_types='seeg', sfreq=sfreq)
@@ -259,6 +254,16 @@ def compute_singletrial_source_power(subjects_dir='/hpc/comco/brovelli.a/db_mne/
     power_atlas.average().plot_image(units='z-score', scaling=1, titles='HGA')
 
 def check_results():
+
+    brain.set_index('volume')
+
+    brain.show_sources(src[1], hemi='lh', lobe=['Subcortical'], name=['Thal'], sphere_color=(0.7, 0.7, 0.7))
+    brain.show_sources(src[1], hemi='lh', lobe=['Subcortical'], name=['Thal'], opacity=0.1)
+
+    brain.set_index(index='surface')
+    brain.show_sources(src[0], hemi='lh', lobe=['Frontal'], name=['Insula'], sphere_color=(0.7, 0.7, 0.7), opacity=1)
+
+
     # !!!!!
     # Add half time window to timepoints
     # !!!!!
@@ -411,5 +416,5 @@ def check_results():
 
 if __name__ == '__main__':
     # do_preprocessing()
-    create_source_model()
-    # compute_singletrial_source_power()
+    # create_source_model()
+    compute_singletrial_source_power()
