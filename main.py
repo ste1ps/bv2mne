@@ -241,15 +241,15 @@ def compute_singletrial_source_power(subjects_dir='/hpc/comco/brovelli.a/db_mne/
     power_atlas.save(fname_power)
 
     # Plotting image
-    pow.average().plot_image(picks=np.arange(0,41,1), units='z-score', scalings=1, titles='HGA - lh', cmap='interactive')
+    power_atlas.average().plot_image(picks=np.arange(0,41,1), units='z-score', scalings=1, titles='HGA - lh', cmap='interactive')
     plt.yticks(np.linspace(0, 40, 41), pow.ch_names[0:41], rotation='horizontal', fontsize=8)
     plt.grid()
-    pow.average().plot_image(picks=np.arange(41,82,1), units='z-score', scalings=1, titles='HGA - lr', cmap='interactive')
+    power_atlas.average().plot_image(picks=np.arange(41,82,1), units='z-score', scalings=1, titles='HGA - lr', cmap='interactive')
     plt.yticks(np.linspace(0, 40, 41), pow.ch_names[41:82], rotation='horizontal', fontsize=8)
     plt.grid()
 
     # Single area Mdl
-    pow.plot_image(picks=22, units='z-score', scalings=1, titles='HGA - lr', cmap='interactive')
+    power_atlas.plot_image(picks=22, units='z-score', scalings=1, titles='HGA - lr', cmap='interactive')
     
     power_atlas.average().plot_image(units='z-score', scaling=1, titles='HGA')
 
