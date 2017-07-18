@@ -184,6 +184,7 @@ class Brain(object):
                     # get volume sources
                     # pack = True, sources will be packed
                     sources_volume, _ = get_brain_sources(self.volumes[hemi], space, remains, pack=True)
+
                     src[1].append(sources_volume)
         
         # do not keep the empty hemisphere

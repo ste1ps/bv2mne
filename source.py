@@ -119,7 +119,7 @@ def get_volume_sources(volume, space=5, remains=None):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         # create clusters
-        km = MiniBatchKMeans(n_clusters=remains, n_init=10, compute_labels=True)
+        km = MiniBatchKMeans(n_clusters=remains, n_init=10)
         
     # get cluster labels
     cluster_id = km.fit(volume.pos).labels_

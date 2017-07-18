@@ -2,6 +2,7 @@
 
 # Author: Alexandre Fabre <alexandre.fabre22@gmail.com>
 #         Andrea Brovelli
+#         Ruggero Basanisi
 
 from brain import get_brain
 from preprocessing import preprocessing_meg_te
@@ -19,11 +20,20 @@ from data import (read_serialize,
                   serialize,
                   create_trans)
 
-
 # from connectivity import (linear_corr,
 #                           covGC_time)
 
-def do_preprocessing(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', subject='subject_04', session='1'):
+# ----------------------------------------------------------------------------------------------------------------------
+# Subject directoy settings
+# ----------------------------------------------------------------------------------------------------------------------
+Subjects_Dir = '/hpc/comco/basanisi.r/Databases/db_mne/meg_te/'
+Subject = 'subject_08'
+Session = '3'
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+def do_preprocessing(subjects_dir=Subjects_Dir, subject=Subject, session=Session):
     '''
     Pipeline for the preprocessing:
     i) import raw data
@@ -32,9 +42,9 @@ def do_preprocessing(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', subjec
     iv) filtering etc
     '''
 
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     # Functional data
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     fname_bti = subjects_dir + '{0}/raw/{1}/c,rfDC'.format(subject, session)
     fname_config = subjects_dir + '{0}/raw/{1}/config'.format(subject, session)
     fname_hs = subjects_dir + '{0}/raw/{1}/hs_file'.format(subject, session)
@@ -46,7 +56,7 @@ def do_preprocessing(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', subjec
     preprocessing_meg_te(subjects_dir, subject, session, fname_bti, fname_config, fname_hs)
 
 
-def create_source_model(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', subject='subject_04'):
+def create_source_model(subjects_dir=Subjects_Dir, subject=Subject):
     '''
     Pipeline for
     i) importing BrainVISA white meshes  for positions and MarsAtlas textures for areas
@@ -55,9 +65,9 @@ def create_source_model(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', sub
     iv) possibility to visualize BEM meshes, sources, cortical meshes, etc
     '''
 
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     # Anatomical data
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     # White matter meshes
     fname_surf_L = subjects_dir + '{0}/surf/{0}_Lwhite.gii'.format(subject)
     fname_surf_R = subjects_dir + '{0}/surf/{0}_Rwhite.gii'.format(subject)
@@ -65,8 +75,8 @@ def create_source_model(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', sub
     fname_tex_L = subjects_dir + '{0}/tex/{0}_Lwhite_parcels_marsAtlas.gii'.format(subject)
     fname_tex_R = subjects_dir + '{0}/tex/{0}_Rwhite_parcels_marsAtlas.gii'.format(subject)
     # MarsAtas files
-    fname_atlas = subjects_dir + 'label/MarsAtlas_BV_2015.txt'  # Labelling xls file
-    fname_color = subjects_dir + 'label/MarsAtlas.ima'          # Color palette
+    fname_atlas = subjects_dir + 'label/MarsAtlas_BV_2015.xls'  # Labelling xls file
+    fname_color = subjects_dir + 'label/MarsAtlas.ima'  # Color palette
     # MarsAtlas volume parcellation from Brainvisa
     fname_vol = subjects_dir + '{0}/vol/{0}_parcellation.nii.gz'.format(subject)
     name_lobe_vol = ['Subcortical']
@@ -78,9 +88,9 @@ def create_source_model(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', sub
     # Source space file
     fname_src = subjects_dir + '{0}/src/{0}-src.pickle'.format(subject)
 
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     # Setting up the source space from BrainVISA results
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     # http://martinos.org/mne/stable/manual/cookbook.html#source-localization
     # Create .trm file transformation from BrainVisa to FreeSurfer needed for brain.py function for surface only
     create_trans(subject, fname_trans_ref, fname_trans_out)
@@ -90,8 +100,8 @@ def create_source_model(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', sub
                       0, fname_vol, name_lobe_vol, fname_trans_out, fname_atlas, fname_color)
 
     # Create source space and put dipoles on the white matter surface and on a grid in subcortical volumes
-    # src = brain.get_sources(space=5, distance='euclidean')
-    src = brain.get_sources(space=5, distance='dijkstra')
+    src = brain.get_sources(space=5, distance='euclidean')
+    # src = brain.get_sources(space=5, distance='dijkstra')
 
     # Save brian object to file
     serialize(brain, fname_brain)
@@ -153,16 +163,17 @@ def create_source_model(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', sub
     # x, y, z = coords[sc_lh[0]['inuse'].astype(bool)].T
     # mlab.points3d(x, y, z, color=(1, 0, 0), scale_factor=0.002)
 
-def compute_singletrial_source_power(subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/', subject='subject_04', session='1', event='action'):
+
+def compute_singletrial_source_power(subjects_dir=Subjects_Dir, subject=Subject, session=Session, event='action'):
     '''
     Pipeline for the calculation of single trials estimates of power at the source level using MarsAtlas
     '''
 
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     # Anatomical data
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     # File to align coordinate frames meg2mri computed using mne analyze (interactive gui)
-    fname_trans = subjects_dir + '{0}/trans/{0}_meg2mri-trans.fif'.format(subject)
+    fname_trans = subjects_dir + '{0}/trans/{0}-trans.fif'.format(subject)
     # Brain object file
     fname_brain = subjects_dir + '{0}/src/{0}-brain.pickle'.format(subject)
     # Source space files
@@ -176,9 +187,9 @@ def compute_singletrial_source_power(subjects_dir='/hpc/comco/brovelli.a/db_mne/
     src = pickle.load(pkl_file)
     pkl_file.close()
 
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     # Functional data
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     # Epoched event-of-interest data
     fname_event = subjects_dir + '{0}/prep/{1}/{0}_{2}-epo.fif'.format(subject, session, event)
     epochs_event = mne.read_epochs(fname_event)
@@ -188,9 +199,9 @@ def compute_singletrial_source_power(subjects_dir='/hpc/comco/brovelli.a/db_mne/
     # Output filename for source power analysis at the atals level
     fname_power = subjects_dir + '{0}/hga/{1}/{0}_{2}_hga-epo.fif'.format(subject, session, event)
 
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     # Functional parameters
-    #-------------------------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------------------------
     # High-gamma activity (HGA) parameters
     fmin = 88
     fmax = 92
@@ -207,54 +218,71 @@ def compute_singletrial_source_power(subjects_dir='/hpc/comco/brovelli.a/db_mne/
     # -------------------------------------------------------------------------------------------------------------------
     # Computing the single-shell forward solution using raw data for each session
     # -------------------------------------------------------------------------------------------------------------------
-    # Forward model for cortical sources (fix the source orientation normal to cortical surface)
-    # fwd = forward_model(subject, epochs_event, fname_trans, src[0], subjects_dir, force_fixed=True, name='singleshell-cortex')
-    # Forward model for subcortical sources (no fixed orientation)
-    fwd = forward_model(subject, epochs_event, fname_trans, src[1], subjects_dir, force_fixed=False, name='singleshell-subcort')
 
-    # Event-related source time course stc of single-trial power estimates (all sources)
-    power_event = get_epochs_dics(epochs_event, fwd, tmin=t_data[0], tmax=t_data[1], tstep=tstep,
-                                  win_lengths=win_lengths, mode='multitaper',
-                                  fmin=fmin, fmax=fmax, fsum=False, mt_bandwidth=mt_bandwidth,
-                                  mt_adaptive=False, on_epochs=False, avg_tapers=False, pick_ori=None)
+    for c_s in range(2):
+        if c_s == 0:
+            # Forward model for cortical sources (fix the source orientation normal to cortical surface)
+            fwd = forward_model(subject, epochs_event, fname_trans, src[0], subjects_dir, force_fixed=True,
+                                name='singleshell-cortex')
+        elif c_s == 1:
+            # Forward model for subcortical sources (no fixed orientation)
+            fwd = forward_model(subject, epochs_event, fname_trans, src[1], subjects_dir, force_fixed=False,
+                                name='singleshell-subcort')
 
-    # Baseline source time course stc of single-trial power estimates (all sources)
-    power_baseline = get_epochs_dics(epochs_baseline, fwd, tmin=t_bline[0], tmax=t_bline[1], tstep=tstep,
-                                     win_lengths=win_lengths, mode='multitaper',
-                                     fmin=fmin, fmax=fmax, fsum=False, mt_bandwidth=mt_bandwidth,
-                                     mt_adaptive=False, on_epochs=False, avg_tapers=False, pick_ori=None)
+        # Event-related source time course stc of single-trial power estimates (all sources)
+        power_event = get_epochs_dics(epochs_event, fwd, tmin=t_data[0], tmax=t_data[1], tstep=tstep,
+                                      win_lengths=win_lengths, mode='multitaper',
+                                      fmin=fmin, fmax=fmax, fsum=False, mt_bandwidth=mt_bandwidth,
+                                      mt_adaptive=False, on_epochs=False, avg_tapers=False, pick_ori=None)
 
+        # Baseline source time course stc of single-trial power estimates (all sources)
+        power_baseline = get_epochs_dics(epochs_baseline, fwd, tmin=t_bline[0], tmax=t_bline[1], tstep=tstep,
+                                         win_lengths=win_lengths, mode='multitaper',
+                                         fmin=fmin, fmax=fmax, fsum=False, mt_bandwidth=mt_bandwidth,
+                                         mt_adaptive=False, on_epochs=False, avg_tapers=False, pick_ori=None)
 
-    # Single-trial power timecourse at atlas level (MarsAtlas)
-    power_atlas, area_names, area_lobes = source2atlas(power_event, power_baseline, brain.volumes)
+        if c_s == 0:
+            # Single-trial power timecourse at atlas level (MarsAtlas) for cortical regions
+            power_atlas_cor, area_names, area_lobes = source2atlas(power_event, power_baseline, brain.surfaces)
+        elif c_s == 1:
+            # Single-trial power timecourse at atlas level (MarsAtlas) for subcortical regions
+            power_atlas_sub, area_names, area_lobes = source2atlas(power_event, power_baseline, brain.volumes)
 
-    # Create Epoch class to store power_atlas (can add montage later for MarsAtlas positions)
-    info = mne.create_info(ch_names=area_names, ch_types='seeg', sfreq=sfreq)
+        # Create Epoch class to store power_atlas (can add montage later for MarsAtlas positions)
+        info = mne.create_info(ch_names=area_names, ch_types='seeg', sfreq=sfreq)
 
-    # Trials were cut from tmin
-    tmin = t_data[0] + win_lengths/2
+        # Trials were cut from tmin
+        tmin = t_data[0] + win_lengths / 2
 
-    # Single-trial power at area level
-    power_atlas = mne.EpochsArray(power_atlas, info, epochs_event.events, tmin, epochs_event.event_id)
+        if c_s == 0:
+            # Single-trial power at area level (cortical)
+            power_atlas_cor = mne.EpochsArray(power_atlas_cor, info, epochs_event.events, tmin, epochs_event.event_id)
+        elif c_s == 1:
+            # Single-trial power at area level (subcortical)
+            power_atlas_sub = mne.EpochsArray(power_atlas_sub, info, epochs_event.events, tmin, epochs_event.event_id)
 
+    # Append of both cortical and subcortical EpochsArray
+    power_atlas = power_atlas_cor.add_channels([power_atlas_sub])
     # Save data
     power_atlas.save(fname_power)
 
     # Plotting image
-    power_atlas.average().plot_image(picks=np.arange(0,41,1), units='z-score', scalings=1, titles='HGA - lh', cmap='interactive')
-    plt.yticks(np.linspace(0, 40, 41), pow.ch_names[0:41], rotation='horizontal', fontsize=8)
+    power_atlas.average().plot_image(picks=np.arange(0, 41, 1), units='z-score', scalings=1, titles='HGA - lh',
+                                     cmap='interactive')
+    plt.yticks(np.linspace(0, 40, 41), power_atlas.ch_names[0:41], rotation='horizontal', fontsize=8)
     plt.grid()
-    power_atlas.average().plot_image(picks=np.arange(41,82,1), units='z-score', scalings=1, titles='HGA - lr', cmap='interactive')
-    plt.yticks(np.linspace(0, 40, 41), pow.ch_names[41:82], rotation='horizontal', fontsize=8)
+    power_atlas.average().plot_image(picks=np.arange(41, 82, 1), units='z-score', scalings=1, titles='HGA - lr',
+                                     cmap='interactive')
+    plt.yticks(np.linspace(0, 40, 41), power_atlas.ch_names[41:82], rotation='horizontal', fontsize=8)
     plt.grid()
 
     # Single area Mdl
-    power_atlas.plot_image(picks=22, units='z-score', scalings=1, titles='HGA - lr', cmap='interactive')
-    
-    power_atlas.average().plot_image(units='z-score', scaling=1, titles='HGA')
+    power_atlas.plot_image(picks=22, units='z-score', scalings=1, cmap='interactive')
+
+    power_atlas.average().plot_image(units='z-score', scalings=1, titles='HGA')
+
 
 def check_results():
-
     brain.set_index('volume')
 
     brain.show_sources(src[1], hemi='lh', lobe=['Subcortical'], name=['Thal'], sphere_color=(0.7, 0.7, 0.7))
@@ -262,7 +290,6 @@ def check_results():
 
     brain.set_index(index='surface')
     brain.show_sources(src[0], hemi='lh', lobe=['Frontal'], name=['Insula'], sphere_color=(0.7, 0.7, 0.7), opacity=1)
-
 
     # !!!!!
     # Add half time window to timepoints
@@ -311,73 +338,69 @@ def check_results():
     Mdl = power_atlas[0][22]
     Mdl = (np.mean(Mdl, axis=0))
     plt.figure()
-    plt.imshow(Mdl, cmap=None, interpolation='none', aspect='auto', extent=[tmin+0.1, tmax+0.1, 54, 0], clim=(-4, 4))
+    plt.imshow(Mdl, cmap=None, interpolation='none', aspect='auto', extent=[tmin + 0.1, tmax + 0.1, 54, 0],
+               clim=(-4, 4))
     plt.xlim(-1, 0.7)
     plt.colorbar()
 
-    X = np.zeros((len(data),6094,54))
+    X = np.zeros((len(data), 6094, 54))
     for i in range(len(data)):
         X[i, :] = data[i]
 
-    L = np.zeros((len(data_log),6094,54))
+    L = np.zeros((len(data_log), 6094, 54))
     for i in range(len(data_log)):
         L[i, :] = data_log[i]
 
     plt.figure()
-    plt.imshow(L[:,1000,:].T, cmap=None, interpolation='none', aspect='auto', extent=[tmin+0.2, tmax+0.2, 54, 0])
-
+    plt.imshow(L[:, 1000, :].T, cmap=None, interpolation='none', aspect='auto', extent=[tmin + 0.2, tmax + 0.2, 54, 0])
 
     tmin, tmax = t_data
     plt.figure()
-    plt.imshow(X[:,1000,:].T, cmap=None, interpolation='none', aspect='auto', extent=[tmin+0.2, tmax+0.2, 54, 0])
-    plt.xlim(-1,0.75)
+    plt.imshow(X[:, 1000, :].T, cmap=None, interpolation='none', aspect='auto', extent=[tmin + 0.2, tmax + 0.2, 54, 0])
+    plt.xlim(-1, 0.75)
     plt.colorbar()
 
-
-    N = np.zeros((len(noise),6094,54))
+    N = np.zeros((len(noise), 6094, 54))
     for i in range(len(noise)):
-        N[i,:] = noise[i]
-
+        N[i, :] = noise[i]
 
     t_data = [-1.1, 0.7]
     tmin, tmax = t_data
-    t=np.linspace(tmin,tmax,36)
+    t = np.linspace(tmin, tmax, 36)
     plt.figure()
-    plt.plot(t,X[:,1000,:])
+    plt.plot(t, X[:, 1000, :])
 
     t_noise = [-1.6, -1.2]
     tmin, tmax = t_noise
-    t=np.linspace(tmin,tmax,7)
+    t = np.linspace(tmin, tmax, 7)
     plt.figure()
-    plt.plot(t,N[:,1000,:])
+    plt.plot(t, N[:, 1000, :])
 
-    plt.imshow(N[:,1000,:].T, cmap=None, interpolation='none', aspect='auto', extent=[tmin+0.1, tmax+0.1, 54, 0])
+    plt.imshow(N[:, 1000, :].T, cmap=None, interpolation='none', aspect='auto', extent=[tmin + 0.1, tmax + 0.1, 54, 0])
     plt.colorbar()
-
 
     plt.xlim(-1, 0.7)
     plt.figure()
     plt.plot(N[:, 1000, :])
 
-
     plt.figure()
-    plt.imshow(X[:,1000,:].T, cmap=None, interpolation='none', aspect='auto', extent=[tmin+0.1, tmax+0.1, 57, 0])
+    plt.imshow(X[:, 1000, :].T, cmap=None, interpolation='none', aspect='auto', extent=[tmin + 0.1, tmax + 0.1, 57, 0])
     plt.xlim(-1, 0.7)
 
-    Mdl = np.reshape(Mdl, (400*57,1))
+    Mdl = np.reshape(Mdl, (400 * 57, 1))
     fMdl = mne.filter.low_pass_filter(Mdl, Fs=fs, Fp=25)
-    fMdl = np.reshape(fMdl, (400,57)).T
+    fMdl = np.reshape(fMdl, (400, 57)).T
     plt.imshow(Mdl, cmap=None, interpolation='none', aspect='auto', extent=[tmin, tmax, 57, 0])
 
     Mdl = power_area[0][22]
-    m = np.mean(np.mean(Mdl,axis=0), axis=0)
-    t = np.linspace(tmin+0.1, tmax+0.1, len(m))
+    m = np.mean(np.mean(Mdl, axis=0), axis=0)
+    t = np.linspace(tmin + 0.1, tmax + 0.1, len(m))
     plt.figure()
     plt.plot(t, m)
     plt.xlim(-1, 0.7)
 
     Mdl = power_area[0][22]
-    m = np.mean(np.mean(Mdl,axis=0), axis=0)
+    m = np.mean(np.mean(Mdl, axis=0), axis=0)
     t = np.linspace(tmin, tmax, len(m)) + 0.1
     plt.figure()
     plt.plot(t, m)
@@ -416,5 +439,5 @@ def check_results():
 
 if __name__ == '__main__':
     # do_preprocessing()
-    # create_source_model()
-    compute_singletrial_source_power()
+    create_source_model()
+    # compute_singletrial_source_power()
