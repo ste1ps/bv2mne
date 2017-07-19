@@ -266,23 +266,29 @@ def compute_singletrial_source_power(subjects_dir=Subjects_Dir, subject=Subject,
     # Save data
     power_atlas.save(fname_power)
 
-    # Plotting image
-    power_atlas.average().plot_image(picks=np.arange(0, 41, 1), units='z-score', scalings=1, titles='HGA - lh',
-                                     cmap='interactive')
-    plt.yticks(np.linspace(0, 40, 41), power_atlas.ch_names[0:41], rotation='horizontal', fontsize=8)
+
+def check_results(subjects_dir=Subjects_Dir, subject=Subject, session=Session, event='action'):
+
+    # -------------------------------------------------------------------------------------------------------------------
+    # Functional data
+    # -------------------------------------------------------------------------------------------------------------------
+    # Filename for single-trial HGA
+    fname_hga = subjects_dir + '{0}/hga/{1}/{0}_{2}_hga-epo.fif'.format(subject, session, event)
+    hga = mne.read_epochs(fname_hga)
+
+    # Plotting HGA from all areas of cortex left hemi
+    hga.average().plot_image(picks=np.arange(0, 41, 1), units='z-score', scalings=1, titles='HGA - lh', cmap='interactive')
+    plt.yticks(np.linspace(0, 40, 41), hga.ch_names[0:41], rotation='horizontal', fontsize=8)
     plt.grid()
-    power_atlas.average().plot_image(picks=np.arange(41, 82, 1), units='z-score', scalings=1, titles='HGA - lr',
-                                     cmap='interactive')
-    plt.yticks(np.linspace(0, 40, 41), power_atlas.ch_names[41:82], rotation='horizontal', fontsize=8)
+
+    # Plotting HGA from all areas of cortex right hemi
+    hga.average().plot_image(picks=np.arange(41, 82, 1), units='z-score', scalings=1, titles='HGA - lr', cmap='interactive')
+    plt.yticks(np.linspace(0, 40, 41), hga.ch_names[41:82], rotation='horizontal', fontsize=8)
     plt.grid()
 
     # Single area Mdl
-    power_atlas.plot_image(picks=22, units='z-score', scalings=1, cmap='interactive')
+    hga.plot_image(picks=22, units='z-score', scalings=1, cmap='interactive')
 
-    power_atlas.average().plot_image(units='z-score', scalings=1, titles='HGA')
-
-
-def check_results():
     brain.set_index('volume')
 
     brain.show_sources(src[1], hemi='lh', lobe=['Subcortical'], name=['Thal'], sphere_color=(0.7, 0.7, 0.7))
@@ -440,4 +446,5 @@ def check_results():
 if __name__ == '__main__':
     # do_preprocessing()
     # create_source_model()
-    compute_singletrial_source_power()
+    # compute_singletrial_source_power()
+    check_results()
