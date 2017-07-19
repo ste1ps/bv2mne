@@ -11,7 +11,7 @@ from mne.source_space import SourceSpaces
 from mne.time_frequency.csd import CrossSpectralDensity, csd_epochs
 from mne.source_estimate import SourceEstimate
 from mne.beamformer import dics_source_power
-from mne.beamformer._dics import dics_source_power_bis
+from mne.beamformer._dics import dics_source_power_epochs
 from mne import make_forward_solution
 from mne.connectivity.spectral import (_epoch_spectral_connectivity,
                                        spectral_connectivity)
@@ -195,7 +195,7 @@ def get_epochs_dics(epochs, fwd, tmin=None, tmax=None, tstep=None, win_lengths=N
                                   verbose=verbose, avg_tapers=True, on_epochs=True)
 
         # Perform DICS
-        power_time, vertno = dics_source_power_bis(epochs.info, fwd, csds, avg_csds)
+        power_time, vertno = dics_source_power_epochs(epochs.info, fwd, csds, avg_csds)
 
         # Append time slices
         power.append(power_time)

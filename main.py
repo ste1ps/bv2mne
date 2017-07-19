@@ -27,7 +27,7 @@ from data import (read_serialize,
 # Subject directoy settings
 # ----------------------------------------------------------------------------------------------------------------------
 Subjects_Dir = '/hpc/comco/basanisi.r/Databases/db_mne/meg_te/'
-Subject = 'subject_08'
+Subject = 'subject_04'
 Session = '3'
 
 
@@ -205,15 +205,15 @@ def compute_singletrial_source_power(subjects_dir=Subjects_Dir, subject=Subject,
     # High-gamma activity (HGA) parameters
     fmin = 88
     fmax = 92
-    mt_bandwidth = 60
+    mt_bandwidth = 80
     # Time parameters
-    win_lengths = 0.2
-    tstep = 0.5
+    win_lengths = 0.1
+    tstep = 0.005
     # Sampling rate of power estimates
     sfreq = 1 / tstep
     # Initial time points of multitaper window
     t_data = [-1.0, 0.8]
-    t_bline = [-0.6, -0.2]
+    t_bline = [-1.0, -0.2]
 
     # -------------------------------------------------------------------------------------------------------------------
     # Computing the single-shell forward solution using raw data for each session
@@ -439,5 +439,5 @@ def check_results():
 
 if __name__ == '__main__':
     # do_preprocessing()
-    create_source_model()
-    # compute_singletrial_source_power()
+    # create_source_model()
+    compute_singletrial_source_power()
