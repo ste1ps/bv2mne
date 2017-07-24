@@ -11,7 +11,7 @@ from scipy.stats.mstats import zscore
 
 def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, head_shape_name,
                          response_chan_name='RESPONSE', trigger_chan_name='TRIGGER',
-                         data_id=None, noise_id=None):
+                         data_id=None,  noise_id=None):
 
     # Load raw data
     raw = mne.io.read_raw_bti(pdf_name, config_name, head_shape_name,
@@ -33,7 +33,7 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     # raw.notch_filter(np.arange(50, 251, 50), phase='zero-double')
 
     # Event data ("trigger" channels)
-    events = mne.find_events(raw, stim_channel=trigger_chan_name)
+    events = mne.find_events(raw, stim_channel=trigger_chan_name, min_duration=0.005, shortest_event=2)
 
     # Save event file for mne_analyze
     mne.write_events(subjects_dir + '{0}/prep/{1}/{0}-eve.fif'.format(subject, session), events)
@@ -42,7 +42,7 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     resps = mne.find_events(raw, stim_channel=response_chan_name)
 
     # Define codes for Stim, Action and Reward
-    S_id = [522, 532, 542] # Stim 1, 2, 3 + 512 of photodyode code
+    S_id = [522, 532, 542] # Stim 10, 20, 30 + 512 of photodyode code
     A_id = [128, 256, 512, 1024, 2048] # Thumb, index, middle, ring, little fingers
     R_id = [712, 722, 732] # R: Incorrect, Correct, Late + 512 of photodyode code
 
@@ -54,6 +54,47 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
 
     # Get reward events
     rews = events[np.logical_or.reduce([events[:,-1] == _id for _id in R_id])]
+
+    # Check if all events of one type has the same length:
+    # Created on Mon Jun 12 15:45:23 2017
+    # @author: Ruggero Basanisi
+    #==================================================================================================================
+    # 1) check which array is longer
+    # 2) considering the number of elements in the shortest array
+    # 3) if the timing between events is correct, go on checking
+    # 4) if the timing between events isn't correct, delete the wrong events
+    # 5) save all events values and event times in two different arrays
+    #==================================================================================================================
+    S_size = stims.shape[0] #1)
+    A_size = resps.shape[0]
+    R_size = rews.shape[0]
+
+    for rn in range(min(S_size, A_size, R_size)):   #2)
+        S_size = stims.shape[0]  # 1)
+        A_size = resps.shape[0]
+        R_size = rews.shape[0]
+        if rn == min(S_size, A_size, R_size):
+            pass
+        else:
+            if stims[rn, 0] < resps[rn, 0] < rews[rn, 0]:  # 3)
+                pass
+            else:   #4)
+                while not (stims[rn, 0] < resps[rn, 0] < rews[rn, 0]):
+                    temp = np.array([stims[rn, 0], resps[rn, 0], rews[rn, 0]])
+                    if temp[1]>temp[2]:
+                        rews = np.delete(rews, rn, axis=0)
+                    elif temp[0]>temp[1]:
+                        resps = np.delete(resps, rn, axis=0)
+            if resps[rn, 0] - stims[rn, 0] > 5000:
+                stims = np.delete(stims, rn, axis=0)
+
+            if rn == 0: #5)
+                sar_values = np.array([stims[rn, -1], resps[rn, -1], rews[rn, -1]])
+                sar_times = np.array([stims[rn, 0], resps[rn, 0], rews[rn, 0]])
+            else:
+                sar_values = np.vstack((sar_values, np.array([stims[rn, -1], resps[rn, -1], rews[rn, -1]])))
+                sar_times = np.vstack((sar_times, np.array([stims[rn, 0], resps[rn, 0], rews[rn, 0]])))
+    # ==================================================================================================================
 
     # Check size
     S_size = stims.shape[0]
@@ -142,6 +183,3 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
 
 if __name__=="__main__":
     pass
-
-
-
