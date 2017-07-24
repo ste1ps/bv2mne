@@ -206,7 +206,7 @@ def compute_singletrial_source_power(subjects_dir=Subjects_Dir, subject=Subject,
     fmax = 92
     mt_bandwidth = 80
     # Time parameters
-    win_lengths = 0.1
+    win_lengths = 0.2
     tstep = 0.005
     # Sampling rate of power estimates
     sfreq = 1 / tstep
@@ -445,5 +445,5 @@ def check_results(subjects_dir=Subjects_Dir, subject=Subject, session=Session, e
 if __name__ == '__main__':
     # do_preprocessing()
     # create_source_model()
-    # compute_singletrial_source_power()
-    check_results()
+    compute_singletrial_source_power()
+    # check_results()
