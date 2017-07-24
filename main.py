@@ -30,7 +30,6 @@ Subjects_Dir = '/hpc/comco/basanisi.r/Databases/db_mne/meg_te/'
 Subject = 'subject_04'
 Session = '3'
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 
 def do_preprocessing(subjects_dir=Subjects_Dir, subject=Subject, session=Session):
