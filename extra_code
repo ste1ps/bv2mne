@@ -1,0 +1,53 @@
+# # Alternative way to create source space is with setup_source_space and setup_volume_source_space
+# pos = src[0][0][0]
+# pos['rr'] = pos['rr'][pos['inuse'].astype(bool)]
+# pos['nn'] = pos['nn'][pos['inuse'].astype(bool)]
+# subcort_lh = mne.setup_source_space(subject=subject, fname=None, pos=pos, mri=None, sphere=(0.0, 0.0, 0.0, 90.0), bem='inner_skull',
+#                                            surface=None, mindist=2.0, exclude=0.0, overwrite=None, subjects_dir=subjects_dir,
+#                                            volume_label=None, add_interpolator=True, verbose=None)
+
+# #-------------------------------------------------------------------------------------------------------------------
+# #  Visualization
+# #-------------------------------------------------------------------------------------------------------------------
+# #  Visualize BEM surfaces with sources hemi='lh'
+# source_model = src[1][0]
+# mne.viz.plot_bem(subject, subjects_dir, brain_surfaces='white', src=source_model, slices=np.linspace(140,150,3), orientation='coronal')
+# # Visualize the coregistration
+# info = mne.io.read_info(fname_raw)
+# mne.viz.plot_trans(info, fname_trans, subject=subject, dig=True, meg_sensors=True, head='outer_skin', subjects_dir=subjects_dir)
+# mne.viz.plot_trans(info, fname_trans, subject=subject, dig=[], meg_sensors=[], head=[], brain='white', subjects_dir=subjects_dir)
+# mne.viz.plot_trans(info, fname_trans, subject=subject, dig=True, meg_sensors=[], head='outer_skin', brain='pial', subjects_dir=subjects_dir)
+#
+# # Visualize cortical and subcortical sources coregistration with FS mesh
+# info = mne.io.read_info(fname_raw)
+# mne.viz.plot_trans(info, trans=None, subject=subject, dig=[], meg_sensors=[], head=[], brain='white', subjects_dir=subjects_dir)
+# cx_lh = src[0][0]
+# coords = np.array(cx_lh[0]['rr'])
+# x, y, z = coords[cx_lh[0]['inuse'].astype(bool)].T
+# mlab.points3d(x, y, z, color=(1, 1, 0), scale_factor=0.002)
+# # Visualize subcortical sources
+# sc_lh = src[1][0]
+# coords = np.array(sc_lh[0]['rr'])
+# x, y, z = coords[sc_lh[0]['inuse'].astype(bool)].T
+# mlab.points3d(x, y, z, color=(1, 0, 0), scale_factor=0.002)
+#
+# # Cortical mesh coordinates, faces and normals
+# cx_lh = src[0][0]
+# coords = np.array(cx_lh[0]['rr'])
+# x1, y1, z1 = coords.T
+# faces = cx_lh[0]['tris']
+# normals = cx_lh[0]['nn']
+# # Create mesh
+# mesh = mlab.pipeline.triangular_mesh_source(x1, y1, z1, faces)
+# mesh.data.point_data.normals = normals
+# # Cortical sources
+# x, y, z = coords[cx_lh[0]['inuse'].astype(bool)].T
+# # Visualize cortical sources
+# mlab.figure(1, bgcolor=(0, 0, 0))
+# mlab.pipeline.surface(mesh, color=3 * (0.7,))
+# mlab.points3d(x, y, z, color=(1, 1, 0), scale_factor=0.002)
+# # Subcortical sources
+# sc_lh = src[1][0]
+# coords = np.array(sc_lh[0]['rr'])
+# x, y, z = coords[sc_lh[0]['inuse'].astype(bool)].T
+# mlab.points3d(x, y, z, color=(1, 0, 0), scale_factor=0.002)

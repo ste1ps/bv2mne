@@ -1,20 +1,29 @@
 #!/usr/bin/env python
 
-# Author: Alexandre Fabre <alexandre.fabre22@gmail.com>
-#         Andrea Brovelli
-#         Ruggero Basanisi
+# Author: Andrea Brovelli <andrea.brovelli@univ-amu.fr>
+#         Ruggero Basanisi <ruggero.basanisi@gmail.com>
+#         Alexandre Fabre <alexandre.fabre22@gmail.com>
 
+
+import sys
+# Remove competing MNE versions
+sys.path.remove('/home/brovelli.a/.local/lib/python2.7/site-packages/mne-0.11.0-py2.7.egg')
+sys.path.remove('/hpc/soft/lib/python2.7/site-packages/mne-0.12.0-py2.7.egg')
+sys.path.remove('/hpc/comco/anaconda2/lib/python2.7/site-packages/mne-0.14.dev0-py2.7.egg')
+sys.path.append('/home/brovelli.a/PycharmProjects/mne-python')
+# Change paths
+sys.path.remove('/home/brovelli.a/.local/lib/python2.7/site-packages')
+sys.path.remove('/hpc/soft/lib/python2.7/dist-packages')
+sys.path.remove('/hpc/soft/lib/python2.7/site-packages')
+
+import mne
 from brain import get_brain
-from preprocessing import preprocessing_meg_te
 from source_analysis import (forward_model,
                              get_epochs_dics,
                              source2atlas)
-import changepath
 import pickle
-import mne
-from mne.viz import circular_layout, plot_connectivity_circle
+# from mne.viz import circular_layout, plot_connectivity_circle
 import numpy as np
-import matplotlib.pyplot as plt
 from data import (read_serialize,
                   Master,
                   serialize,
@@ -27,32 +36,16 @@ from data import (read_serialize,
 # Subject directoy settings
 # ----------------------------------------------------------------------------------------------------------------------
 Subjects_Dir = '/hpc/comco/basanisi.r/Databases/db_mne/meg_te/'
-Subject = 'subject_04'
+Subject = 'subject_13'
 Session = '3'
 
+#Subject = sys.argv[1]
+#Session = sys.argv[2]
+
+print(Subject)
+print('Session = ' + str(Session))
+
 # ----------------------------------------------------------------------------------------------------------------------
-
-def do_preprocessing(subjects_dir=Subjects_Dir, subject=Subject, session=Session):
-    '''
-    Pipeline for the preprocessing:
-    i) import raw data
-    ii) artefact rejection
-    iii) detection of events and epoching
-    iv) filtering etc
-    '''
-
-    # -------------------------------------------------------------------------------------------------------------------
-    # Functional data
-    # -------------------------------------------------------------------------------------------------------------------
-    fname_bti = subjects_dir + '{0}/raw/{1}/c,rfDC'.format(subject, session)
-    fname_config = subjects_dir + '{0}/raw/{1}/config'.format(subject, session)
-    fname_hs = subjects_dir + '{0}/raw/{1}/hs_file'.format(subject, session)
-
-    # -------------------------------------------------------------------------------------------------------------------
-    # Preprocessing
-    # -------------------------------------------------------------------------------------------------------------------
-    # Load raw MEG 4D BTI data and do basic preprocessing
-    preprocessing_meg_te(subjects_dir, subject, session, fname_bti, fname_config, fname_hs)
 
 
 def create_source_model(subjects_dir=Subjects_Dir, subject=Subject):
@@ -108,60 +101,7 @@ def create_source_model(subjects_dir=Subjects_Dir, subject=Subject):
     # Save source space to file
     serialize(src, fname_src)
 
-    # # Alternative way to create source space is with setup_source_space and setup_volume_source_space
-    # pos = src[0][0][0]
-    # pos['rr'] = pos['rr'][pos['inuse'].astype(bool)]
-    # pos['nn'] = pos['nn'][pos['inuse'].astype(bool)]
-    # subcort_lh = mne.setup_source_space(subject=subject, fname=None, pos=pos, mri=None, sphere=(0.0, 0.0, 0.0, 90.0), bem='inner_skull',
-    #                                            surface=None, mindist=2.0, exclude=0.0, overwrite=None, subjects_dir=subjects_dir,
-    #                                            volume_label=None, add_interpolator=True, verbose=None)
-
-    # #-------------------------------------------------------------------------------------------------------------------
-    # #  Visualization
-    # #-------------------------------------------------------------------------------------------------------------------
-    # #  Visualize BEM surfaces with sources hemi='lh'
-    # source_model = src[1][0]
-    # mne.viz.plot_bem(subject, subjects_dir, brain_surfaces='white', src=source_model, slices=np.linspace(140,150,3), orientation='coronal')
-    # # Visualize the coregistration
-    # info = mne.io.read_info(fname_raw)
-    # mne.viz.plot_trans(info, fname_trans, subject=subject, dig=True, meg_sensors=True, head='outer_skin', subjects_dir=subjects_dir)
-    # mne.viz.plot_trans(info, fname_trans, subject=subject, dig=[], meg_sensors=[], head=[], brain='white', subjects_dir=subjects_dir)
-    # mne.viz.plot_trans(info, fname_trans, subject=subject, dig=True, meg_sensors=[], head='outer_skin', brain='pial', subjects_dir=subjects_dir)
-    #
-    # # Visualize cortical and subcortical sources coregistration with FS mesh
-    # info = mne.io.read_info(fname_raw)
-    # mne.viz.plot_trans(info, trans=None, subject=subject, dig=[], meg_sensors=[], head=[], brain='white', subjects_dir=subjects_dir)
-    # cx_lh = src[0][0]
-    # coords = np.array(cx_lh[0]['rr'])
-    # x, y, z = coords[cx_lh[0]['inuse'].astype(bool)].T
-    # mlab.points3d(x, y, z, color=(1, 1, 0), scale_factor=0.002)
-    # # Visualize subcortical sources
-    # sc_lh = src[1][0]
-    # coords = np.array(sc_lh[0]['rr'])
-    # x, y, z = coords[sc_lh[0]['inuse'].astype(bool)].T
-    # mlab.points3d(x, y, z, color=(1, 0, 0), scale_factor=0.002)
-    #
-    # # Cortical mesh coordinates, faces and normals
-    # cx_lh = src[0][0]
-    # coords = np.array(cx_lh[0]['rr'])
-    # x1, y1, z1 = coords.T
-    # faces = cx_lh[0]['tris']
-    # normals = cx_lh[0]['nn']
-    # # Create mesh
-    # mesh = mlab.pipeline.triangular_mesh_source(x1, y1, z1, faces)
-    # mesh.data.point_data.normals = normals
-    # # Cortical sources
-    # x, y, z = coords[cx_lh[0]['inuse'].astype(bool)].T
-    # # Visualize cortical sources
-    # mlab.figure(1, bgcolor=(0, 0, 0))
-    # mlab.pipeline.surface(mesh, color=3 * (0.7,))
-    # mlab.points3d(x, y, z, color=(1, 1, 0), scale_factor=0.002)
-    # # Subcortical sources
-    # sc_lh = src[1][0]
-    # coords = np.array(sc_lh[0]['rr'])
-    # x, y, z = coords[sc_lh[0]['inuse'].astype(bool)].T
-    # mlab.points3d(x, y, z, color=(1, 0, 0), scale_factor=0.002)
-
+    print('[done]')
 
 def compute_singletrial_source_power(subjects_dir=Subjects_Dir, subject=Subject, session=Session, event='action'):
     '''

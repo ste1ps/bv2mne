@@ -12,11 +12,8 @@ import mne
 from mne.transforms import (write_trans,
                             read_trans)
 import numpy as np
-
 from numpy.linalg import inv
-
 from nibabel.affines import apply_affine
-
 try:
    import cPickle as pickle
 except ImportError:

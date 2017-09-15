@@ -4,33 +4,24 @@
 
 import warnings
 
-from mayavi import mlab
-
+# from mayavi import mlab
 import numpy as np
-import changepath
 import mne
 from mne import Label
 from mne.surface import complete_surface_info
-from mne.io.constants import FIFF
 from nibabel import gifti
-from nibabel.freesurfer.io import write_geometry
 from nibabel.gifti.gifti import GiftiImage, GiftiDataArray
 from mne.source_space import SourceSpaces
-from surfer import Brain
-
+# from surfer import Brain
 from scipy.stats import rankdata
-
 import source
-
 from data import (read_texture_info,
                   read_serialize,
                   compute_trans)
-
 from sklearn.metrics.pairwise import euclidean_distances
 from scipy.spatial.distance import euclidean
 import networkx as nx
 import gdist
-
 
 class Surface(object):
 

@@ -4,8 +4,7 @@
 
 import numpy as np
 
-import os
-import changepath
+
 import mne
 from mne.source_space import SourceSpaces
 from mne.time_frequency.csd import CrossSpectralDensity, csd_epochs

@@ -5,6 +5,7 @@
 
 from surface import (get_surface,
                      get_surface_areas)
+
 from volume import get_volume
 from source import (get_brain_sources,
                     show_surface_sources)
@@ -14,7 +15,6 @@ from data import (read_serialize,
                   serialize,
                   create_param_dict)
 import numpy as np
-
 
 class Brain(object):
     def __init__(self, surfaces=None, volumes=None, surface_master=None):
@@ -503,10 +503,11 @@ def get_brain(subject, fname_surf_L=None, fname_surf_R=None, fname_tex_L=None,
             if surfaces is None:
                 surfaces = []
 
+            # Create surface areas
             surface = get_surface(fname_surf[i], subject=subject, hemi=hemi, trans=trans)
 
             # save to project areas on the hemisphere
-            surface.save_as_ref()
+            # surface.save_as_ref()
 
             areas_hemi = get_surface_areas(surface, texture=fname_tex[i], hemi=hemi,
                                            subject=subject, fname_atlas=fname_atlas,
