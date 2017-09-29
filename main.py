@@ -45,9 +45,6 @@ Session = '3'
 print(Subject)
 print('Session = ' + str(Session))
 
-# ----------------------------------------------------------------------------------------------------------------------
-
-
 def create_source_model(subjects_dir=Subjects_Dir, subject=Subject):
     '''
     Pipeline for

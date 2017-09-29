@@ -29,7 +29,7 @@ Subjects_Dir_Raw = '/envau/work/comco/brovelli.a/Data/Neurophy/MEG_TE/'
 Subject_Raw, Subject = 'S1', 'subject_01'
 # Names of output MEG data (dir and fname)
 Subjects_Dir = '/hpc/comco/basanisi.r/Databases/db_mne/meg_te/'
-Sessions = ['5', '6']
+Sessions = ['1', '2', '3', '4', '5', '6']
 
 def do_preprocessing(subjects_dir_raw=Subjects_Dir_Raw, subjects_dir=Subjects_Dir, subject_raw=Subject_Raw, subject=Subject, Sessions=Sessions):
     '''
@@ -55,6 +55,8 @@ def do_preprocessing(subjects_dir_raw=Subjects_Dir_Raw, subjects_dir=Subjects_Di
         # Preprocessing
         # --------------------------------------------------------------------------------------------------------------
         preprocessing_meg_te(subjects_dir, subject, session, fname_bti, fname_config, fname_hs)
+
+    return
 
 
 def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, head_shape_name,
@@ -171,11 +173,14 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     # MEG data in high-gamma range
     meg = raw.pick_types(meg=True)
 
+    # High-gamma activity for artifact rejection
+    hga = meg.filter(60, 120)
+
     # Unique index of events that are present in the task (performed actions only)
     A_idx = list(np.unique(events[np.logical_or.reduce([events[:,2] == _id for _id in A_id]), 2]))
 
     # Compute RMS of high-gamma meg activity
-    epochs_a = mne.Epochs(meg.filter(60, 120), events, event_id=A_idx, tmin=-1.5, tmax=2.5)
+    epochs_a = mne.Epochs(hga, events, event_id=A_idx, tmin=-1.5, tmax=2.5)
     epoch_data = epochs_a.get_data() # n_epochs * n_channels * datas
     rms = np.sqrt(np.mean(np.square(epoch_data), axis=2)) # RMS
 
@@ -192,13 +197,32 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     epochs_b = mne.Epochs(meg, events, event_id=S_id, tmin=-1.5, tmax=0.5)
 
     # Create epochs on stimulus onset
-    epochs_s = mne.Epochs(meg, events, event_id=S_id, tmin=-0.5, tmax=1.5)
+    epochs_s = mne.Epochs(meg, events, event_id=S_id, tmin=-0.75, tmax=1.5)
 
     # Create epochs on action
-    epochs_a = mne.Epochs(meg, events, event_id=A_idx, tmin=-1.25, tmax=0.75)
+    epochs_a = mne.Epochs(meg, events, event_id=A_idx, tmin=-1.5, tmax=1)
 
     # Create epochs on reward onset
-    epochs_r = mne.Epochs(meg, events, event_id=R_id, tmin=-0.5, tmax=1.5)
+    epochs_r = mne.Epochs(meg, events, event_id=R_id, tmin=-0.75, tmax=1.5)
+
+
+    # Create event_id dictionary
+    u_id = np.unique(task_events['learn_label_a'])
+    s_id = [str(u_id[i]) for i in range(len(u_id))]
+    event_id_a = dict(zip(s_id, u_id))
+    u_id = np.unique(task_events['learn_label_r'])
+    s_id = [str(u_id[i]) for i in range(len(u_id))]
+    event_id_r = dict(zip(s_id, u_id))
+
+    # Change thirds column of events
+    epochs_s.events[:,2] = task_events['learn_label_a']
+    epochs_a.events[:,2] = task_events['learn_label_a']
+    epochs_r.events[:,2] = task_events['learn_label_r']
+
+    # Change even_id
+    epochs_s.event_id = event_id_a
+    epochs_a.event_id = event_id_a
+    epochs_r.event_id = event_id_r
 
     # Remove artifacted trials
     bad_trials = artifact_rejection[1]
