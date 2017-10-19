@@ -26,10 +26,10 @@ from GUI_bad_selector import GUI_plot
 # ----------------------------------------------------------------------------------------------------------------------
 # Names of input raw MEG data
 Subjects_Dir_Raw = '/envau/work/comco/brovelli.a/Data/Neurophy/MEG_TE/'
-Subject_Raw, Subject = 'S1', 'subject_01'
+Subject_Raw, Subject = 'S10', 'subject_10'
 # Names of output MEG data (dir and fname)
 Subjects_Dir = '/hpc/comco/basanisi.r/Databases/db_mne/meg_te/'
-Sessions = ['1', '2', '3', '4', '5', '6']
+Sessions = [ '1', '2', '3', '4', '5', '6']
 
 def do_preprocessing(subjects_dir_raw=Subjects_Dir_Raw, subjects_dir=Subjects_Dir, subject_raw=Subject_Raw, subject=Subject, Sessions=Sessions):
     '''
@@ -179,6 +179,9 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     # Unique index of events that are present in the task (performed actions only)
     A_idx = list(np.unique(events[np.logical_or.reduce([events[:,2] == _id for _id in A_id]), 2]))
 
+    # Unique index of events that are present in the task (observed outomces only)
+    R_idx = list(np.unique(events[np.logical_or.reduce([events[:,2] == _id for _id in R_id]), 2]))
+
     # Compute RMS of high-gamma meg activity
     epochs_a = mne.Epochs(hga, events, event_id=A_idx, tmin=-1.5, tmax=2.5)
     epoch_data = epochs_a.get_data() # n_epochs * n_channels * datas
@@ -188,11 +191,8 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     artifact_rejection = GUI_plot(rms, subjects_dir, subject)
 
     # ------------------------------------------------------------------------------------------------------------------
-    # Step 4. Create Epochs and Save results
+    # Step 4. Create Epochs, remove Artifacted trials and channels and Save results
     # ------------------------------------------------------------------------------------------------------------------
-    # Save raw data
-    # raw.save(subjects_dir + '{0}/raw/{1}/{0}_raw.fif'.format(subject, session), overwrite=True)
-
     # Create epochs for baseline
     epochs_b = mne.Epochs(meg, events, event_id=S_id, tmin=-1.5, tmax=0.5)
 
@@ -203,26 +203,12 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     epochs_a = mne.Epochs(meg, events, event_id=A_idx, tmin=-1.5, tmax=1)
 
     # Create epochs on reward onset
-    epochs_r = mne.Epochs(meg, events, event_id=R_id, tmin=-0.75, tmax=1.5)
+    epochs_r = mne.Epochs(meg, events, event_id=R_idx, tmin=-0.75, tmax=1.5)
 
-
-    # Create event_id dictionary
-    u_id = np.unique(task_events['learn_label_a'])
-    s_id = [str(u_id[i]) for i in range(len(u_id))]
-    event_id_a = dict(zip(s_id, u_id))
-    u_id = np.unique(task_events['learn_label_r'])
-    s_id = [str(u_id[i]) for i in range(len(u_id))]
-    event_id_r = dict(zip(s_id, u_id))
-
-    # Change thirds column of events
+    # Update thirds column of events according to learning labels
     epochs_s.events[:,2] = task_events['learn_label_a']
     epochs_a.events[:,2] = task_events['learn_label_a']
     epochs_r.events[:,2] = task_events['learn_label_r']
-
-    # Change even_id
-    epochs_s.event_id = event_id_a
-    epochs_a.event_id = event_id_a
-    epochs_r.event_id = event_id_r
 
     # Remove artifacted trials
     bad_trials = artifact_rejection[1]
@@ -242,6 +228,21 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
             epochs_s.info['bads'] = bad_chans
             epochs_a.info['bads'] = bad_chans
             epochs_r.info['bads'] = bad_chans
+
+    # Update event_id dictionary according to learning labels
+    u_id = np.unique(epochs_a.events[:,2])
+    s_id = [str(u_id[i]) for i in range(len(u_id))]
+    event_id_a = dict(zip(s_id, u_id))
+    u_id = np.unique(epochs_r.events[:,2])
+    s_id = [str(u_id[i]) for i in range(len(u_id))]
+    event_id_r = dict(zip(s_id, u_id))
+
+    # Change even_id in Epochs
+    epochs_s.event_id = event_id_a
+    epochs_a.event_id = event_id_a
+    epochs_r.event_id = event_id_r
+
+    print(epochs_a.events)
 
     # Save epochs
     epochs_b.save(subjects_dir+'{0}/prep/{1}/{0}_bline-epo.fif'.format(subject, session))
