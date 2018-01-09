@@ -136,14 +136,15 @@ def GUI_plot(RMS, subjects_dir, subject):
     fig.canvas.mpl_connect('button_press_event', sub_click)
     plt.show()
 
-    channels_ar = open(subjects_dir+'{0}/channels_ar.txt'.format(subject), 'w')
-    for car in bad_channels:
-        channels_ar.write("%s \n" % car)
-    channels_ar.close()
-    trials_ar = open(subjects_dir + '{0}/trials_ar.txt'.format(subject), 'w')
-    for tar in bad_trials:
-        trials_ar.write("%s \n" % tar)
-    trials_ar.close()
+    # # Save bad channels and trials to text file
+    # channels_ar = open(subjects_dir+'{0}/channels_ar.txt'.format(subject), 'w')
+    # for car in bad_channels:
+    #     channels_ar.write("%s \n" % car)
+    # channels_ar.close()
+    # trials_ar = open(subjects_dir + '{0}/trials_ar.txt'.format(subject), 'w')
+    # for tar in bad_trials:
+    #     trials_ar.write("%s \n" % tar)
+    # trials_ar.close()
 
     if len(bad_trials) == 0 and len(bad_channels) == 0:
         artifact_rejection = (None, None)

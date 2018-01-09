@@ -20,13 +20,14 @@ sys.path.remove('/hpc/soft/lib/python2.7/site-packages')
 import mne
 import numpy as np
 from GUI_bad_selector import GUI_plot
+from data import serialize
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Subject directoy settings
 # ----------------------------------------------------------------------------------------------------------------------
 # Names of input raw MEG data
 Subjects_Dir_Raw = '/envau/work/comco/brovelli.a/Data/Neurophy/MEG_TE/'
-Subject_Raw, Subject = 'S10', 'subject_10'
+Subject_Raw, Subject = 'S13', 'subject_13'
 # Names of output MEG data (dir and fname)
 Subjects_Dir = '/hpc/comco/basanisi.r/Databases/db_mne/meg_te/'
 Sessions = [ '1', '2', '3', '4', '5', '6']
@@ -52,7 +53,7 @@ def do_preprocessing(subjects_dir_raw=Subjects_Dir_Raw, subjects_dir=Subjects_Di
         fname_hs = subjects_dir_raw + '{0}/{1}/hs_file'.format(subject_raw, session)
 
         # --------------------------------------------------------------------------------------------------------------
-        # Preprocessing
+        # Preprocessing data
         # --------------------------------------------------------------------------------------------------------------
         preprocessing_meg_te(subjects_dir, subject, session, fname_bti, fname_config, fname_hs)
 
@@ -206,6 +207,7 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     epochs_r = mne.Epochs(meg, events, event_id=R_idx, tmin=-0.75, tmax=1.5)
 
     # Update thirds column of events according to learning labels
+    epochs_b.events[:,2] = task_events['learn_label_a']
     epochs_s.events[:,2] = task_events['learn_label_a']
     epochs_a.events[:,2] = task_events['learn_label_a']
     epochs_r.events[:,2] = task_events['learn_label_r']
@@ -238,6 +240,7 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     event_id_r = dict(zip(s_id, u_id))
 
     # Change even_id in Epochs
+    epochs_b.event_id = event_id_a
     epochs_s.event_id = event_id_a
     epochs_a.event_id = event_id_a
     epochs_r.event_id = event_id_r
@@ -254,9 +257,13 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     fname_events = subjects_dir + '{0}/prep/{1}/{0}_meg-eve.fif'.format(subject, session)
     mne.write_events(fname_events, events)
 
+    # Updata task_events with information of bad MEG trials
+    good_trials = np.setdiff1d(range(1,len(a)), bad_trials)
+    task_events.update({'good_trials': good_trials, 'bad_trials': bad_trials})
+
     # Save all task events on fif file
-    fname_events = subjects_dir + '{0}/prep/{1}/{0}_task_events.npy'.format(subject, session)
-    np.save(fname_events, task_events)
+    fname_events = subjects_dir + '{0}/prep/{1}/{0}_task_events.pkl'.format(subject, session)
+    serialize(task_events, fname_events)
 
     return
 
