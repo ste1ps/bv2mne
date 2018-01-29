@@ -30,7 +30,7 @@ Subjects_Dir_Raw = '/envau/work/comco/brovelli.a/Data/Neurophy/MEG_TE/'
 Subject_Raw, Subject = 'S13', 'subject_13'
 # Names of output MEG data (dir and fname)
 Subjects_Dir = '/hpc/comco/basanisi.r/Databases/db_mne/meg_te/'
-Sessions = [ '1', '2', '3', '4', '5', '6']
+Sessions = [ '3', '4', '5', '6']
 
 def do_preprocessing(subjects_dir_raw=Subjects_Dir_Raw, subjects_dir=Subjects_Dir, subject_raw=Subject_Raw, subject=Subject, Sessions=Sessions):
     '''
@@ -61,8 +61,7 @@ def do_preprocessing(subjects_dir_raw=Subjects_Dir_Raw, subjects_dir=Subjects_Di
 
 
 def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, head_shape_name,
-                         response_chan_name='RESPONSE', trigger_chan_name='TRIGGER',
-                         data_id=None,  noise_id=None):
+                         response_chan_name='RESPONSE', trigger_chan_name='TRIGGER'):
     # ------------------------------------------------------------------------------------------------------------------
     # Preprocessing steps for trial-and-error learning task (arbitrary visuomotor learning)
     # ------------------------------------------------------------------------------------------------------------------
@@ -198,13 +197,13 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     epochs_b = mne.Epochs(meg, events, event_id=S_id, tmin=-1.5, tmax=0.5)
 
     # Create epochs on stimulus onset
-    epochs_s = mne.Epochs(meg, events, event_id=S_id, tmin=-0.75, tmax=1.5)
+    epochs_s = mne.Epochs(meg, events, event_id=S_id, tmin=-1, tmax=2)
 
     # Create epochs on action
-    epochs_a = mne.Epochs(meg, events, event_id=A_idx, tmin=-1.5, tmax=1)
+    epochs_a = mne.Epochs(meg, events, event_id=A_idx, tmin=-2, tmax=1.5)
 
     # Create epochs on reward onset
-    epochs_r = mne.Epochs(meg, events, event_id=R_idx, tmin=-0.75, tmax=1.5)
+    epochs_r = mne.Epochs(meg, events, event_id=R_idx, tmin=-1, tmax=2)
 
     # Update thirds column of events according to learning labels
     epochs_b.events[:,2] = task_events['learn_label_a']
@@ -212,14 +211,14 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     epochs_a.events[:,2] = task_events['learn_label_a']
     epochs_r.events[:,2] = task_events['learn_label_r']
 
-    # Remove artifacted trials
-    bad_trials = artifact_rejection[1]
-    if bad_trials is not None:
-        # MEG data
-        epochs_b.drop(indices=bad_trials)
-        epochs_s.drop(indices=bad_trials)
-        epochs_a.drop(indices=bad_trials)
-        epochs_r.drop(indices=bad_trials)
+    # # Remove artifacted trials
+    # bad_trials = artifact_rejection[1]
+    # if bad_trials is not None:
+    #     # MEG data
+    #     epochs_b.drop(indices=bad_trials)
+    #     epochs_s.drop(indices=bad_trials)
+    #     epochs_a.drop(indices=bad_trials)
+    #     epochs_r.drop(indices=bad_trials)
 
     # Remove artifacted channels
     bad_channels = artifact_rejection[0]
@@ -239,7 +238,7 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     s_id = [str(u_id[i]) for i in range(len(u_id))]
     event_id_r = dict(zip(s_id, u_id))
 
-    # Change even_id in Epochs
+    # Change even_id in EpocCreate Epochs,hs
     epochs_b.event_id = event_id_a
     epochs_s.event_id = event_id_a
     epochs_a.event_id = event_id_a
@@ -257,8 +256,10 @@ def preprocessing_meg_te(subjects_dir, subject, session, pdf_name, config_name, 
     fname_events = subjects_dir + '{0}/prep/{1}/{0}_meg-eve.fif'.format(subject, session)
     mne.write_events(fname_events, events)
 
-    # Updata task_events with information of bad MEG trials
-    good_trials = np.setdiff1d(range(1,len(a)), bad_trials)
+    # Update task_events with information of bad MEG trials
+    # Remove artifacted trials later
+    bad_trials = artifact_rejection[1]
+    good_trials = np.setdiff1d(range(0,len(a)), bad_trials)
     task_events.update({'good_trials': good_trials, 'bad_trials': bad_trials})
 
     # Save all task events on fif file

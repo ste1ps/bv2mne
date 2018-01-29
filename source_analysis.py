@@ -157,7 +157,7 @@ def get_epochs_dics(epochs, fwd, tmin=None, tmax=None, tstep=0.005, win_lengths=
     if tmin is None:
         tmin = epochs.times[0]
     if tmax is None:
-        tmax = epochs.times[-1]
+        tmax = epochs.times[-1] - win_lengths
 
     # Multiplying by 1e3 to avoid numerical issues
     n_time_steps = int(((tmax - tmin) * 1e3) // (tstep * 1e3))
