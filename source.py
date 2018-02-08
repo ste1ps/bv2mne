@@ -1,161 +1,117 @@
 ﻿#!/usr/bin/env python
 
-# Author: Alexandre Fabre <alexandre.fabre22@gmail.com>
+# Author: Andrea Brovelli <andrea.brovelli@univ-amu.fr>
+#         Ruggero Basanisi <ruggero.basanisi@gmail.com>
+#         Alexandre Fabre <alexandre.fabre22@gmail.com>
 
 import numpy as np
-import mne
 import warnings
-from mne.source_space import SourceSpaces
-from mne.surface import complete_surface_info
-from mne import write_source_spaces
 from sklearn.cluster import MiniBatchKMeans
 from math import pi
 import Pycluster
 from Pycluster import kmedoids
-
 from data import (read_serialize,
                   Master, serialize)
-
 import surface as surf_m
-
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.neighbors import kneighbors_graph
-
 from sklearn.metrics.pairwise import euclidean_distances
 from mne.source_space import SourceSpaces
 from mne.io.constants import FIFF
 
-
-def get_number_sources(obj, space=5, surface=True):
-    """get number sources in region
-
-    Parameters
-    ----------
-    obj : Surface object | Volume object
-        The region where sources is computing
-    space : float
-        The distance between sources
-    surface : bool
-        If True, the number of sources is computing on a surface. Else it's computing in volume
-
-    Returns
-    -------
-    sol : int
-        Number of sources
-    diff :
-        Number points that are not sources
-    -------
-    Author : Alexandre Fabre
-    """
-
-    if space < 0:
-        raise ValueError('the space number must be positive')
-
-    # the number of selected vertices mustn't exceed the number of vertices
-    _max = obj.pos_length
-
-    # compute on the surface
-    if surface:
-        # surface area per source in mm2
-        space = float(space ** 2)
-
-        # compute the area of the surface with its triangle areas
-        sol = 0
-        triangles_pos = obj.pos[obj.triangles]
-        for points in triangles_pos:
-            a, b, c = np.array(points)
-            
-            tri_area = 0.5 * np.linalg.norm(np.cross(b-a,c-a))
-            
-            sol += tri_area
-
-    # compute on the volume
-    else:
-        # we divide the volume by a sphere volume to know the number of sources
-        space = float(4 / 3 * pi * ((space / 2) ** 3))
-        sol = _max
-
-    # avoid division by zero
-    sol = int(sol / (max(space, 1e-5)))
-
-    sol = int(min(_max, sol))
-
-    # number of points that have not been selected
-    diff = _max - sol
-
-    return sol, diff
-
-
-def get_volume_sources(volume, space=5, remains=None):
-    """get sources in volume
+# Definitions
+def get_brain_sources(obj, space=5, distance=None, remains=None, pack=True,
+                      master=None):
+    """get brain sources for each structures
 
     Parameters
     ----------
-    volume : Volume object
+    obj : list of Surface object | list of Volume object
     space : float
-        The distance between sources
-    remains : None | int
+        Distance between sources
+    distance : 'euclidean' | 'dijkstra' | 'continuous' | None
+        The distance used on the surface
+        If distance is different to None, obj is treated like a Surface object
+    remains : int | None
         The number of sources that we want to keep
-
+    pack : Boolean
+        If True pack sources
+    master: Surface object | Volume object | array | None
+        The reference structure used to pack sources or positions
     Returns
     -------
-    src : SourceSpaces object
+    src : SourceSpaces  object
+    index_pack_src : list(2)
+         Source indices in the source list for each parcels.
+         If pack is None, it's not returned
     -------
     Author : Alexandre Fabre
     """
 
-    if remains is None:
-        remains, removes = get_number_sources(volume, space=space,
-                                              surface=False)
-
+    if distance is not None:
+        print('Set sources on MarsAtlas cortical areas')
     else:
-        # avoid to have an incorrect number of sources
-        remains = max(0, min(volume.pos_length, remains))
-        removes = volume.pos_length - remains
+        print('Set sources in MarsAtlas subcortical areas')
 
-    if remains == 0:
-        raise ValueError('Error, 0 source created')
+    remain_nb = 0
+    remove_nb = 0
+    src = []
+    for i, cour_obj in enumerate(obj):
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        # create clusters
-        km = MiniBatchKMeans(n_clusters=remains, n_init=10, compute_labels=True)
-        
-    # get cluster labels
-    cluster_id = km.fit(volume.pos).labels_
+        if distance is not None:
+            cour_src = get_surface_sources(cour_obj, space, distance, remains)
+        else:
+            cour_src = get_volume_sources(cour_obj, space, remains)
 
-    # get centroids of clusters
-    centroids, _ = Pycluster.clustercentroids(volume.pos, clusterid=cluster_id)
+        print('    ' + cour_obj.name + '-' + cour_obj.hemi)
 
-    dist = euclidean_distances(centroids, volume.pos)
+        remove_nb += cour_src[0]['removes']
+        remain_nb += cour_src[0]['nuse']
+        src.append(cour_src)
 
-    # get indices of closest points of centroids
-    arg_min = np.argmin(dist, axis=1)
+    if pack:
+        pos = None
+        normals = None
+        triangles = None
+        # get attributes from master
+        if master is not None:
+            if isinstance(master, list) or isinstance(master, np.ndarray):
+                pos = master
+            else:
+                if hasattr(master, 'pos'):
+                    pos = master.pos
+                elif hasattr(master, 'rr'):
+                    pos = master.rr
 
-    inuse = np.zeros(volume.pos_length)
-    inuse[arg_min] = 1
-    inuse = inuse.astype(int) # Need to be int
+                if hasattr(master, 'normals'):
+                    normals = master.normals
+                elif hasattr(master, 'nn'):
+                    normals = master.nn
 
-    # must be converted to meters
-    # Pos is in voxels coords not mm
-    rr = volume.pos * 1e-3
+                if hasattr(master, 'triangles'):
+                    triangles = master.triangles
+                elif hasattr(master, 'tris'):
+                    triangles = master.tris
 
-    if volume.hemi=='lh':
-        Id = 101
-    elif volume.hemi=='rh':
-        Id = 102
-    src = [{'rr': rr, 'coord_frame': np.array((FIFF.FIFFV_COORD_MRI,), np.int32), 'type': 'surf', 'id': Id,
-            'np': volume.pos_length, 'nn': volume.normals, 'inuse': inuse, 'nuse': remains, 'dist': None,
-            'nearest': None, 'use_tris': None, 'nuse_tris': 0, 'vertno': arg_min, 'patch_inds': None,
-            'tris': None, 'dist_limit': None, 'pinfo': None, 'ntri': 0, 'nearest_dist': None, 'removes': removes}]
+        # pack sources
+        src, index_pack_src = sources_pack(src, pos, normals, triangles)
+        for i in range(len(obj)):
+            if hasattr(obj[i], 'index_pack_src'):
+                obj[i].index_pack_src = index_pack_src[i]
+    else:
+        src = SourceSpaces(src)
 
-    src = SourceSpaces(src)
+    # print("\n%d points have been removed, %d points remained for downsample" % (remove_nb, remain_nb))
 
-    return src
+    if pack:
+        return src, index_pack_src
+    else:
+        return src
 
+    print('[done]')
 
 def get_surface_sources(surface, space=5, distance='euclidean', remains=None):
-    """get sources in volume
+    """get sources on cortical surface
 
     Parameters
     ----------
@@ -225,6 +181,9 @@ def get_surface_sources(surface, space=5, distance='euclidean', remains=None):
         inuse[centroids_id] = 1
         inuse = inuse.astype(int)   # Need to be int
 
+        # Print output
+        # print(surface.name + '-' + surface.hemi+' NSources='+str(sum(inuse)))
+
     # must be converted to meters and transorm to numpy array
     rr = surface.pos * 1e-3
 
@@ -244,6 +203,131 @@ def get_surface_sources(surface, space=5, distance='euclidean', remains=None):
 
     return src
 
+def get_volume_sources(volume, space=5, remains=None):
+    """get sources in volume
+
+    Parameters
+    ----------
+    volume : Volume object
+    space : float
+        The distance between sources
+    remains : None | int
+        The number of sources that we want to keep
+
+    Returns
+    -------
+    src : SourceSpaces object
+    -------
+    Author : Alexandre Fabre
+    """
+
+    if remains is None:
+        remains, removes = get_number_sources(volume, space=space,
+                                              surface=False)
+
+    else:
+        # avoid to have an incorrect number of sources
+        remains = max(0, min(volume.pos_length, remains))
+        removes = volume.pos_length - remains
+
+    if remains == 0:
+        raise ValueError('Error, 0 source created')
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        # create clusters
+        km = MiniBatchKMeans(n_clusters=remains)
+        
+    # get cluster labels
+    cluster_id = km.fit(volume.pos).labels_
+
+    # get centroids of clusters
+    centroids, _ = Pycluster.clustercentroids(volume.pos, clusterid=cluster_id)
+
+    dist = euclidean_distances(centroids, volume.pos)
+
+    # get indices of closest points of centroids
+    arg_min = np.argmin(dist, axis=1)
+
+    inuse = np.zeros(volume.pos_length)
+    inuse[arg_min] = 1
+    inuse = inuse.astype(int) # Need to be int
+
+    # must be converted to meters
+    # Pos is in voxels coords not mm
+    rr = volume.pos * 1e-3
+
+    if volume.hemi=='lh':
+        Id = 101
+    elif volume.hemi=='rh':
+        Id = 102
+    src = [{'rr': rr, 'coord_frame': np.array((FIFF.FIFFV_COORD_MRI,), np.int32), 'type': 'surf', 'id': Id,
+            'np': volume.pos_length, 'nn': volume.normals, 'inuse': inuse, 'nuse': remains, 'dist': None,
+            'nearest': None, 'use_tris': None, 'nuse_tris': 0, 'vertno': arg_min, 'patch_inds': None,
+            'tris': None, 'dist_limit': None, 'pinfo': None, 'ntri': 0, 'nearest_dist': None, 'removes': removes}]
+
+    src = SourceSpaces(src)
+
+    return src
+
+def get_number_sources(obj, space=5, surface=True):
+    """get number sources in region
+
+    Parameters
+    ----------
+    obj : Surface object | Volume object
+        The region where sources is computing
+    space : float
+        The distance between sources
+    surface : bool
+        If True, the number of sources is computing on a surface. Else it's computing in volume
+
+    Returns
+    -------
+    sol : int
+        Number of sources
+    diff :
+        Number points that are not sources
+    -------
+    Author : Alexandre Fabre
+    """
+
+    if space < 0:
+        raise ValueError('the space number must be positive')
+
+    # the number of selected vertices mustn't exceed the number of vertices
+    _max = obj.pos_length
+
+    # compute on the surface
+    if surface:
+        # surface area per source in mm2
+        space = float(space ** 2)
+
+        # compute the area of the surface with its triangle areas
+        sol = 0
+        triangles_pos = obj.pos[obj.triangles]
+        for points in triangles_pos:
+            a, b, c = np.array(points)
+
+            tri_area = 0.5 * np.linalg.norm(np.cross(b - a, c - a))
+
+            sol += tri_area
+
+    # compute on the volume
+    else:
+        # we divide the volume by a sphere volume to know the number of sources
+        space = float(4 / 3 * pi * ((space / 2) ** 3))
+        sol = _max
+
+    # avoid division by zero
+    sol = int(sol / (max(space, 1e-5)))
+
+    sol = int(min(_max, sol))
+
+    # number of points that have not been selected
+    diff = _max - sol
+
+    return sol, diff
 
 def sources_pack(src, pos=None, normals=None, triangles=None, unit='mm'):
     """pack sources
@@ -371,89 +455,6 @@ def sources_pack(src, pos=None, normals=None, triangles=None, unit='mm'):
 
     return src, index_pack_src
 
-
-def get_brain_sources(obj, space=5, distance=None, remains=None, pack=True,
-                      master=None):
-    """get brain sources for each structures
-
-    Parameters
-    ----------
-    obj : list of Surface object | list of Volume object
-    space : float
-        Distance between sources
-    distance : 'euclidean' | 'dijkstra' | 'continuous' | None
-        The distance used on the surface
-        If distance is different to None, obj is treated like a Surface object
-    remains : int | None
-        The number of sources that we want to keep
-    pack : Boolean
-        If True pack sources
-    master: Surface object | Volume object | array | None
-        The reference structure used to pack sources or positions
-    Returns
-    -------
-    src : SourceSpaces  object
-    index_pack_src : list(2)
-         Source indices in the source list for each parcels.
-         If pack is None, it's not returned
-    -------
-    Author : Alexandre Fabre
-    """
-
-    remain_nb = 0
-    remove_nb = 0
-    src = []
-    for i, cour_obj in enumerate(obj):
-
-        if distance is not None:
-            cour_src = get_surface_sources(cour_obj, space, distance, remains)
-        else:
-            cour_src = get_volume_sources(cour_obj, space, remains)
-
-        remove_nb += cour_src[0]['removes']
-        remain_nb += cour_src[0]['nuse']
-        src.append(cour_src)
-
-    if pack:
-        pos = None
-        normals = None
-        triangles = None
-        # get attributes from master
-        if master is not None:
-            if isinstance(master, list) or isinstance(master, np.ndarray):
-                pos = master
-            else:
-                if hasattr(master, 'pos'):
-                    pos = master.pos
-                elif hasattr(master, 'rr'):
-                    pos = master.rr
-
-                if hasattr(master, 'normals'):
-                    normals = master.normals
-                elif hasattr(master, 'nn'):
-                    normals = master.nn
-
-                if hasattr(master, 'triangles'):
-                    triangles = master.triangles
-                elif hasattr(master, 'tris'):
-                    triangles = master.tris
-
-        # pack sources
-        src, index_pack_src = sources_pack(src, pos, normals, triangles)
-        for i in range(len(obj)):
-            if hasattr(obj[i], 'index_pack_src'):
-                obj[i].index_pack_src = index_pack_src[i]
-    else:
-        src = SourceSpaces(src)
-
-    print("\n%d points have been removed, %d points remained for downsample" % (remove_nb, remain_nb))
-
-    if pack:
-        return src, index_pack_src
-    else:
-        return src
-
-
 def show_surface_sources(src, obj, index_pack_src=None, index=None, figure=None, color=None, bgcolor=(1, 1, 1),
                          size=(600, 600), opacity=1,  show=True, show_brain=False, brain=None, get_brain=False,
                          fileformat='white', sphere_color=(0.7, 1, 0.7), scale_factor=1, resolution=8):
@@ -537,7 +538,7 @@ def show_surface_sources(src, obj, index_pack_src=None, index=None, figure=None,
             p = np.take(src['vertno'], index_src, axis=0).tolist()
 
             # get source positions
-            pos_cour = np.take(src['rr'], p, axis=0) * 1000
+            pos_cour = np.take(src['rr'], p, axis=0) * 1e3
             
         else:
             index_src = False

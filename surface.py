@@ -4,33 +4,24 @@
 
 import warnings
 
-from mayavi import mlab
-
+# from mayavi import mlab
 import numpy as np
-
 import mne
 from mne import Label
 from mne.surface import complete_surface_info
-from mne.io.constants import FIFF
 from nibabel import gifti
-from nibabel.freesurfer.io import write_geometry
 from nibabel.gifti.gifti import GiftiImage, GiftiDataArray
 from mne.source_space import SourceSpaces
-from surfer import Brain
-
+# from surfer import Brain
 from scipy.stats import rankdata
-
 import source
-
 from data import (read_texture_info,
                   read_serialize,
                   compute_trans)
-
 from sklearn.metrics.pairwise import euclidean_distances
 from scipy.spatial.distance import euclidean
 import networkx as nx
 import gdist
-
 
 class Surface(object):
 
@@ -90,7 +81,6 @@ class Surface(object):
 
         if trans is not None:
             self.pos = compute_trans(self.pos, trans)
-
 
         # compute normals on the surface
         if normals is None:
@@ -416,12 +406,134 @@ def get_surface_areas(surface, texture, subject='S4', hemi='lh',
     else:
         base_values = texture
 
+    values = base_values
+
+    # get parcels and count the number of nodes in each parcel (count)
+    parcels, counts = np.unique(values, return_counts=True)
+
+    # get parcels information
+    info = read_texture_info(fname_atlas, hemi)
+    color = read_color_area(fname_color, index=np.unique(values))
+
+    parcels_length = len(parcels)
+
+    # number of points in a mesh face
+    nb_iter = 3
+
+    # get triangles for whole surface
+    triangles = surface.triangles
+    total_nodes = 0
+    for pos, val in enumerate(parcels):
+
+        name_process = info.get(parcels[pos], False)
+        if not name_process:
+            name = 'no_name'
+            lobe = 'no_name'
+        else:
+            name = name_process[0]
+            lobe = name_process[1]
+
+        # Find index for nodes of the parcel
+        ind = np.where(values == val)
+
+        # Keep only those nodes and pos of parcel that are associated with a face (triangle) in its parcel
+        # get triangles where points of the parcel are
+        ix = np.in1d(triangles.ravel(), ind).reshape(triangles.shape)
+
+        # Counting the number of True per lines --> True : 1 , False : 0
+        # to know how many points of the parcel are in each face
+        counts = ix.sum(1)
+
+        # Indices of each triangles that contains 3 points of the parcel
+        ind_all = np.where(counts == 3)
+        tris_cour = triangles[ind_all]
+
+        # Associate triangles to the new index of point positions in the area
+        triangles_parcel = rankdata(tris_cour, method='dense').reshape(-1, 3) - 1
+
+        if color is None:
+            color_cour = (0.8, 0.2, 0.1)
+        else:
+            color_cour = color[pos]
+
+        # Select nodes that are connected through triangles
+        nodes = np.unique(tris_cour)
+        iy = np.in1d(ind, nodes)
+        ind_n = np.where(iy)
+        ind_n = ind_n[0]
+        ind   = ind[0]
+        # Positions and normals
+        rr_parcel = rr[ind[ind_n]]
+        normals_parcel = normals[ind[ind_n]]
+        # Textures (values)
+        values_parcel = values[ind[ind_n]]
+
+        # locations in meters
+        # rr_parcel = rr_parcel * 1e-3
+
+        # Number of nodes
+        nodes, tmp = rr_parcel.shape
+        vertex_ind = np.arange(total_nodes, total_nodes+nodes, 1)
+        total_nodes =+ nodes
+
+        label = Label(vertex_ind, rr_parcel, values=values_parcel, hemi=hemi,
+                      comment=name, subject=subject, name=name,
+                      color=color_cour, verbose=None)
+
+        cour_surface = Surface(rr_parcel, triangles_parcel, subject=subject, label=label, hemi=hemi,
+                               name=name, lobe=lobe, color=color_cour,
+                               normals=normals_parcel, surface_master=surface)
+
+        areas.append(cour_surface)
+
+    return areas
+
+
+
+def get_surface_areas_old(surface, texture, subject='S4', hemi='lh',
+                      fname_atlas=None, fname_color=None):
+    """get areas on the surface
+
+    Parameters
+    ----------
+    surface : instance of Surface
+    texture : str | array
+        Array to get areas or the filename to get this
+    subject : str
+        Name of the subject
+    hemi : 'lh' | 'rh'
+        Name of the hemisphere
+    fname_atlas : str | None
+        Filename for area atlas
+    fname_color : str | None
+        Filename for area color
+
+    Returns
+    -------
+    areas : list of Surface object
+    -------
+    Author : Alexandre Fabre
+    """
+
+    areas = []
+
+    rr = surface.pos
+    normals = surface.normals
+
+    # Gt texture with gifti format (BainVisa)= labels of MarsAtlas
+    if isinstance(texture, str):
+        giftiImage = gifti.giftiio.read(texture)
+        base_values = giftiImage.darrays[0].data
+
+    else:
+        base_values = texture
+
     # sort indices thanks to texture
     argsort = np.argsort(base_values, kind='mergesort', axis=0)
 
     values = base_values[argsort]
 
-    # get parcels and count their number
+    # get parcels and count the number of nodes in each parcel (count)
     parcels, counts = np.unique(values, return_counts=True)
 
     vertices = argsort
@@ -453,7 +565,7 @@ def get_surface_areas(surface, texture, subject='S4', hemi='lh',
 
         end = cour + val
 
-        vertices_cour = vertices[cour: end]
+        vertices_cour = vertices[cour:end]
 
         # Keep only those nodes and pos of parcel that is associated with a face (triangle) in its parcel.
         # This remo
@@ -476,6 +588,7 @@ def get_surface_areas(surface, texture, subject='S4', hemi='lh',
         # indices of each faces that contains 2 points of the parcel
         ind = np.where(counts == 2)
 
+        # Just take those links that form triangles
         tris_modif = triangles[ind]
         triangles_bool = triangles_bool[ind]
 

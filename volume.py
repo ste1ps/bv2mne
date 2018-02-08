@@ -5,15 +5,12 @@
 from nibabel.affines import apply_affine
 import nibabel as nib
 from scipy.ndimage.filters import generic_filter
-
 from data import (read_serialize,
                   read_texture_info)
-
 import numpy as np
 from source import get_volume_sources
 from sklearn.neighbors import kneighbors_graph
 from surface import Surface
-import mne
 
 
 class Volume(object):

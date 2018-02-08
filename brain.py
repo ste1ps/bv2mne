@@ -2,9 +2,10 @@
 
 # Author: Alexandre Fabre <alexandre.fabre22@gmail.com>
 
-import changepath
+
 from surface import (get_surface,
                      get_surface_areas)
+
 from volume import get_volume
 from source import (get_brain_sources,
                     show_surface_sources)
@@ -14,7 +15,6 @@ from data import (read_serialize,
                   serialize,
                   create_param_dict)
 import numpy as np
-
 
 class Brain(object):
     def __init__(self, surfaces=None, volumes=None, surface_master=None):
@@ -126,7 +126,7 @@ class Brain(object):
         if index is None:
             # to select the other object
             index = struct[struct!=self.name_obj]
-        elif not index in values:
+        elif not index in struct:
             raise ValueError('index must be \'surface\' or \'volume\'')
         
         if index == 'surface' and self.surfaces is not None:
@@ -184,6 +184,7 @@ class Brain(object):
                     # get volume sources
                     # pack = True, sources will be packed
                     sources_volume, _ = get_brain_sources(self.volumes[hemi], space, remains, pack=True)
+
                     src[1].append(sources_volume)
         
         # do not keep the empty hemisphere
@@ -225,7 +226,7 @@ class Brain(object):
         if hemi is None or hemi == 'all':
             obj = self.obj.copy()
         elif hemi in keys:
-            obj = {hemi: self.obj[hemi].copy()}
+            obj = self.obj.copy()
         else:
             raise ValueError('hemi is invalid')
 
@@ -502,10 +503,11 @@ def get_brain(subject, fname_surf_L=None, fname_surf_R=None, fname_tex_L=None,
             if surfaces is None:
                 surfaces = []
 
+            # Create surface areas
             surface = get_surface(fname_surf[i], subject=subject, hemi=hemi, trans=trans)
 
             # save to project areas on the hemisphere
-            surface.save_as_ref()
+            # surface.save_as_ref()
 
             areas_hemi = get_surface_areas(surface, texture=fname_tex[i], hemi=hemi,
                                            subject=subject, fname_atlas=fname_atlas,
@@ -578,7 +580,7 @@ def brain_test(subject):
     # brain.show_sources(src[0], hemi='lh', lobe=['Occipital'])
     # The show_brain option = True does not work because it calls a FS mesh which is not correctly oriented
     # figure = brain.show_sources(src[0], hemi='lh', lobe=['Occipital'], figure=figure, opacity=1, show_brain=False)
-    # Display sources in the motoro cortex
+    # Display sources in the motor cortex
     # brain.show_sources(src[0], hemi='lh', lobe=['Frontal'], name=['Mdl'], opacity=1)
 
     brain.set_index()

@@ -4,14 +4,13 @@
 
 import numpy as np
 
-import os
-import changepath
+
 import mne
 from mne.source_space import SourceSpaces
 from mne.time_frequency.csd import CrossSpectralDensity, csd_epochs
 from mne.source_estimate import SourceEstimate
 from mne.beamformer import dics_source_power
-from mne.beamformer._dics import dics_source_power_bis
+from mne.beamformer._dics import dics_source_power_epochs
 from mne import make_forward_solution
 from mne.connectivity.spectral import (_epoch_spectral_connectivity,
                                        spectral_connectivity)
@@ -48,17 +47,13 @@ def forward_model(subject, raw, fname_trans, src, subjects_dir, force_fixed=Fals
     -------
     Author : Alexandre Fabre
     """
-
-    # Project 's directory
-    subj_dir = '/hpc/comco/brovelli.a/db_mne/meg_te/'
-
     # files to save step
-    fname_bem_model = subj_dir + '{0}/bem/{0}-{1}-bem.fif'.format(subject, name)
-    fname_bem_sol = subj_dir + '{0}/bem/{0}-{1}-bem-sol.fif'.format(subject, name)
-    fname_fwd = subj_dir + '{0}/fwd/{0}-{1}-fwd.fif'.format(subject, name)
+    fname_bem_model = subjects_dir + '{0}/bem/{0}-{1}-bem.fif'.format(subject, name)
+    fname_bem_sol = subjects_dir + '{0}/bem/{0}-{1}-bem-sol.fif'.format(subject, name)
+    fname_fwd = subjects_dir + '{0}/fwd/{0}-{1}-fwd.fif'.format(subject, name)
 
     # Make bem model: single-shell model. Depends on anatomy only.
-    model = mne.make_bem_model(subject, conductivity=[0.3], subjects_dir='/hpc/comco/brovelli.a/db_mne/meg_te/')
+    model = mne.make_bem_model(subject, conductivity=[0.3], subjects_dir=subjects_dir)
     mne.write_bem_surfaces(fname_bem_model, model)
 
     # Make bem solution. Depends on anatomy only.
@@ -89,7 +84,7 @@ def forward_model(subject, raw, fname_trans, src, subjects_dir, force_fixed=Fals
     return fwd
 
 
-def get_epochs_dics(epochs, fwd, tmin=None, tmax=None, tstep=None, win_lengths=None, mode='multitaper',
+def get_epochs_dics(epochs, fwd, tmin=None, tmax=None, tstep=0.005, win_lengths=0.2, mode='multitaper',
                     fmin=0, fmax= np.inf, fsum=True, n_fft=None, mt_bandwidth=None,
                     mt_adaptive=False, mt_low_bias=True, projs=None, verbose=None,
                     reg=0.01, label=None, pick_ori=None, on_epochs=True,
@@ -158,27 +153,29 @@ def get_epochs_dics(epochs, fwd, tmin=None, tmax=None, tstep=None, win_lengths=N
     """
     
 
+    # Default values
     if tmin is None:
-        tmin = epochs.times[0]+step/2+0.01
+        tmin = epochs.times[0]
     if tmax is None:
-        tmax = epochs.times[-1]-step/2-0.01
-    if tstep is None:
-        tstep = tmin - tmax
-    if win_lengths is None:
-        win_lengths = tmin - tmax
+        tmax = epochs.times[-1] - win_lengths
 
     # Multiplying by 1e3 to avoid numerical issues
     n_time_steps = int(((tmax - tmin) * 1e3) // (tstep * 1e3))
 
+    # Init power and time
     power = []
+    time  = np.zeros(n_time_steps)
+
+    print('Computing cross-spectral density from epochs...')
     for i_time in range(n_time_steps):
 
         win_tmin = tmin + i_time * tstep
         win_tmax = win_tmin + win_lengths
+        time[i_time] = win_tmin + win_lengths/2
 
         avg_csds = None
         
-        print('window : {0} to {1}'.format(win_tmin, win_tmax))
+        print('   From {0}s to {1}s'.format(win_tmin, win_tmax))
 
         # Compute cross-spectral density csd matrix (nChans, nChans, nTapers, nTrials)
         csds = csd_epochs(epochs, mode=mode, fmin=fmin, fmax=fmax, tmin=win_tmin,
@@ -195,12 +192,12 @@ def get_epochs_dics(epochs, fwd, tmin=None, tmax=None, tstep=None, win_lengths=N
                                   verbose=verbose, avg_tapers=True, on_epochs=True)
 
         # Perform DICS
-        power_time, vertno = dics_source_power_bis(epochs.info, fwd, csds, avg_csds)
+        power_time, vertno = dics_source_power_epochs(epochs.info, fwd, csds, avg_csds)
 
         # Append time slices
         power.append(power_time)
 
-    return power
+    return power, time
 
 
 
